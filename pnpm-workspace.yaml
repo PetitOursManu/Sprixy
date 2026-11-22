@@ -1,0 +1,7 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+onlyBuiltDependencies:
+  - sharp
+  - esbuild
+  - ffmpeg-static

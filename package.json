@@ -1,0 +1,17 @@
+{
+  "name": "sprixy",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Sprixy — open-source, self-hosted AI 2D game asset studio",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.14.0",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @sprixy/server --filter @sprixy/web dev",
+    "build": "pnpm -r --filter ./packages/** --filter ./apps/** build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "start": "node apps/server/dist/index.js"
+  }
+}
