@@ -6,5 +6,6 @@ export default defineConfig({
   platform: 'node',
   noExternal: ['@sprixy/client'],
   clean: true,
+  removeNodeProtocol: false,
   banner: { js: '#!/usr/bin/env node' },
 });

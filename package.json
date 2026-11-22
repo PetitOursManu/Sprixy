@@ -11,14 +11,18 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @sprixy/server --filter @sprixy/web dev",
-    "build": "pnpm -r --filter ./packages/** --filter ./apps/** build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm --filter @sprixy/web build && pnpm --filter @sprixy/server build && pnpm --filter @sprixy/mcp build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
     "start": "node apps/server/dist/index.js"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PetitOursManu/Sprixy.git"
   }
 }

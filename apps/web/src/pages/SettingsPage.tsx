@@ -114,7 +114,7 @@ function Integrations() {
   const copy = useCopy();
   const origin = window.location.origin;
   const remote = `claude mcp add --transport http sprixy ${origin}/mcp --header "Authorization: Bearer spx_YOUR_TOKEN"`;
-  const local = `claude mcp add sprixy --env SPRIXY_URL=${origin} --env SPRIXY_TOKEN=spx_YOUR_TOKEN -- npx -y @sprixy/mcp`;
+  const local = `claude mcp add sprixy --env SPRIXY_URL=${origin} --env SPRIXY_TOKEN=spx_YOUR_TOKEN -- node /path/to/Sprixy/packages/mcp/dist/cli.js`;
   const curl = `curl -X POST ${origin}/api/v1/generations \\\n  -H "Authorization: Bearer spx_YOUR_TOKEN" -H "Content-Type: application/json" \\\n  -d '{"task":"generate","projectId":"prj_…","kind":"character","prompt":"a goblin archer"}'`;
   return (
     <div className="panel">

@@ -1,11 +1,12 @@
 import sharp from 'sharp';
-import gifenc from 'gifenc';
+import { createRequire } from 'node:module';
+import type * as Gifenc from 'gifenc';
 import type { RGBAImage } from '@sprixy/core';
 import { upscaleInteger } from '@sprixy/core';
 import { badRequest } from './errors.js';
 
-// gifenc ships CommonJS for Node: use the default export for ESM interop.
-const { GIFEncoder, quantize, applyPalette } = gifenc;
+// gifenc's package entry points differ between Node (CJS) and bundlers (ESM): load the CJS build explicitly.
+const { GIFEncoder, quantize, applyPalette } = createRequire(import.meta.url)('gifenc') as typeof Gifenc;
 
 /** Decode any image (PNG, JPEG, WebP, GIF first frame...) into RGBA. */
 export async function decodeImage(buf: Buffer | Uint8Array): Promise<RGBAImage> {
