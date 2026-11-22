@@ -83,9 +83,16 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   const candidates = [config.webDist, path.resolve(here, '../../web/dist'), path.resolve(here, '../public')].filter((p): p is string => !!p);
   const webDir = candidates.find((p) => existsSync(path.join(p, 'index.html')));
   if (webDir) {
-    await app.register(fastifyStatic, { root: webDir, wildcard: false });
+    await app.register(fastifyStatic, {
+      root: webDir,
+      wildcard: true,
+      setHeaders: (reply: { header(k: string, v: string): unknown }, filePath: string) => {
+        // Hashed bundles are immutable; index.html must always be revalidated.
+        reply.header('Cache-Control', filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable');
+      },
+    });
     app.setNotFoundHandler((req, reply) => {
-      if (req.method === 'GET' && !req.url.startsWith('/api') && !req.url.startsWith('/mcp')) return reply.sendFile('index.html');
+      if (req.method === 'GET' && !req.url.startsWith('/api') && !req.url.startsWith('/mcp')) return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
       return reply.code(404).send({ error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.url} not found` } });
     });
   }
