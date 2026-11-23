@@ -247,7 +247,8 @@ function resolveLoras(userId: string, model: ModelDef, sel: { loraId: string; sc
       warnings.push(`LoRA "${l.name}" (${l.family}) is not compatible with ${model.name} — skipped`);
       continue;
     }
-    out.push({ ref: { path: l.path, scale: l.scale }, trigger: l.trigger, name: l.name });
+    // Trigger words are joined with commas: drop trailing punctuation ("Pixel art style." → "Pixel art style").
+    out.push({ ref: { path: l.path, scale: l.scale }, trigger: l.trigger?.trim().replace(/[.,;:\s]+$/, '') || undefined, name: l.name });
   }
   return out.slice(0, model.maxLoras ?? 3);
 }
