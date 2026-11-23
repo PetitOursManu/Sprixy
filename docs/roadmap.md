@@ -37,6 +37,10 @@ study ([competitive-analysis.md](competitive-analysis.md)): selection-based AI e
 Godot terrains and Tiled wangsets, native `.aseprite` export, job webhooks, dataset export for external LoRA training,
 mobile layout fixes.
 
+Also validated on real runs: larger models (FLUX.2 dev 32B, FLUX.2 pro, Qwen Image 2512, Qwen Image Edit 2511) with
+comparisons in [providers.md](providers.md), new LoRA families and presets, and the one-call **character sheet**
+animation method (4 directions × walk / attack / hurt) through a community sprite-sheet LoRA.
+
 ## Next
 - Publish `@sprixy/mcp`, `@sprixy/client` and `@sprixy/core` to npm.
 - Real-run validation of LoRA training on fal.ai.

@@ -10,6 +10,9 @@ const FAMILIES = [
   { id: 'z-image', label: 'Z-Image Turbo' },
   { id: 'flux2-klein-4b', label: 'FLUX.2 klein 4B' },
   { id: 'flux2-klein-9b', label: 'FLUX.2 klein 9B' },
+  { id: 'flux2-dev', label: 'FLUX.2 dev' },
+  { id: 'qwen-image', label: 'Qwen Image' },
+  { id: 'qwen-image-edit-2511', label: 'Qwen Image Edit 2511' },
   { id: 'flux1', label: 'FLUX.1 dev' },
 ];
 

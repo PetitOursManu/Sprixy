@@ -182,8 +182,8 @@ export function createSprixyMcpServer(client: SprixyClient, opts: SprixyMcpOptio
 
   server.registerTool('sprixy_animate_asset', {
     title: 'Animate asset',
-    description: "Animate a sprite: method 'video' (image-to-video model such as Wan, frames extracted and pixelized) or 'sheet' (edit model draws a sprite sheet). Produces an animation asset with frames.",
-    inputSchema: { assetId: z.string(), action: z.string().describe('e.g. "walk cycle", "idle breathing", "sword attack"'), method: z.enum(['video', 'sheet']).optional(), frames: z.number().int().min(2).max(24).optional(), fps: z.number().int().min(2).max(30).optional(), modelId: z.string().optional(), wait: z.boolean().optional() },
+    description: "Animate a sprite: method 'video' (image-to-video model such as Wan, frames extracted and pixelized), 'sheet' (edit model draws a sprite sheet) or 'charsheet' (Qwen Image Edit 2511 + sprite-sheet LoRA: one call returns a 4-direction sheet of 32x48 frames with walk x3, attack x2 and hurt x1 per direction, plus a looping walk animation per direction; no action needed). Produces animation assets with frames.",
+    inputSchema: { assetId: z.string(), action: z.string().optional().describe('e.g. "walk cycle", "idle breathing", "sword attack" (required for video and sheet)'), method: z.enum(['video', 'sheet', 'charsheet']).optional(), frames: z.number().int().min(2).max(24).optional(), fps: z.number().int().min(2).max(30).optional(), modelId: z.string().optional(), wait: z.boolean().optional() },
   }, guard(async ({ wait, ...spec }) => finish(await client.startJob({ task: 'animate', ...spec }), wait !== false)));
 
   server.registerTool('sprixy_edit_region', {

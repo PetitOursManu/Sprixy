@@ -32,7 +32,7 @@ export function ModelPicker({ capability, alsoCapability, value, onChange, allow
       <select className="select" value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)}>
         {allowDefault && <option value="">Project / default ({all.find((m) => m.id === def)?.name ?? def})</option>}
         <optgroup label="Curated (fal.ai)">
-          {curated.map((m) => <option key={m.id} value={m.id}>{m.name}{m.available ? '' : ' — no key'} · {priceLabel(m)}</option>)}
+          {curated.map((m) => <option key={m.id} value={m.id}>{m.name}{m.size && !m.name.includes(m.size) ? ` (${m.size})` : ''}{m.available ? '' : ' — no key'} · {priceLabel(m)}</option>)}
         </optgroup>
         {dynamic.length > 0 && (
           <optgroup label="OpenRouter (your key)">
@@ -43,6 +43,7 @@ export function ModelPicker({ capability, alsoCapability, value, onChange, allow
       {selected && (
         <div className="row small muted wrap" style={{ gap: 10 }}>
           <span className="chip">{selected.provider}</span>
+          {selected.size && <span className="chip mono">{selected.size}</span>}
           <span className="row" style={{ gap: 4 }}>quality <Meter value={selected.quality} /></span>
           <span className="row" style={{ gap: 4 }}>speed <Meter value={selected.speed} /></span>
           <span className="cost">{priceLabel(selected)}</span>

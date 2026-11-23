@@ -10,6 +10,7 @@ import { decodeImage, encodePng } from '../lib/images.js';
 import { PROVIDERS, listModels, DEFAULT_MODELS, getModel } from '../providers/registry.js';
 import { PRESET_LORAS } from '../providers/catalog.js';
 import type { Capability, ProviderId, TaskRequest } from '../providers/types.js';
+import { LORA_FAMILIES } from '../providers/types.js';
 import { hasKey, getSecret } from '../services/keys.js';
 import { jobSpecSchema, createJob, estimateJob, getGeneration, listGenerations, cancelJob } from '../services/jobs.js';
 import { getAssetRow, assertProject } from '../services/assets.js';
@@ -109,7 +110,7 @@ export async function aiRoutes(app: FastifyInstance) {
     schema: {
       tags: ['loras'], summary: 'Import a compatible LoRA by URL (.safetensors) or Hugging Face "owner/repo"',
       body: z.object({
-        name: z.string().min(1).max(120), family: z.enum(['z-image', 'flux2-klein-4b', 'flux2-klein-9b', 'flux1']),
+        name: z.string().min(1).max(120), family: z.enum(LORA_FAMILIES),
         path: z.string().min(3).max(1000).refine((p) => /^https:\/\//.test(p) || /^[\w.-]+\/[\w.-]+$/.test(p), 'Must be an https URL or a Hugging Face owner/repo id'),
         triggerWord: z.string().max(80).optional(), defaultScale: z.number().min(0).max(4).default(1), description: z.string().max(1000).default(''), projectId: z.string().optional(),
       }),

@@ -197,7 +197,7 @@ function AiPanel({ a }: { a: AssetDetail }) {
   const [dirs, setDirs] = useState<4 | 8>(4);
   const [base, setBase] = useState<'south' | 'east'>('south');
   const [action, setAction] = useState('walk cycle');
-  const [method, setMethod] = useState<'video' | 'sheet'>('video');
+  const [method, setMethod] = useState<'video' | 'sheet' | 'charsheet'>('video');
   const [frames, setFrames] = useState(8);
   const [fps, setFps] = useState(10);
   useEffect(() => setModelId(undefined), [mode]);
@@ -205,7 +205,10 @@ function AiPanel({ a }: { a: AssetDetail }) {
   const spec = useMemo(() => {
     if (mode === 'variant') return prompt.trim() ? { task: 'variant', assetId: a.id, prompt, count, lockPalette: lock, modelId } : null;
     if (mode === 'directions') return { task: 'directions', assetId: a.id, directions: dirs, baseDirection: base, modelId, lockPalette: lock };
-    if (mode === 'animate') return action.trim() ? { task: 'animate', assetId: a.id, action, method, frames, fps, modelId, lockPalette: lock } : null;
+    if (mode === 'animate') {
+      if (method === 'charsheet') return { task: 'animate', assetId: a.id, method, fps, lockPalette: lock };
+      return action.trim() ? { task: 'animate', assetId: a.id, action, method, frames, fps, modelId, lockPalette: lock } : null;
+    }
     return { task: 'removeBg', assetId: a.id, modelId };
   }, [mode, prompt, count, lock, modelId, dirs, base, action, method, frames, fps, a.id]);
   const { est, run } = useJob(spec);
@@ -227,14 +230,19 @@ function AiPanel({ a }: { a: AssetDetail }) {
         <Field label="Model"><ModelPicker capability="edit" value={modelId} onChange={setModelId} /></Field>
       </>}
       {mode === 'animate' && <>
+        <Field label="Method"><Segmented value={method} onChange={setMethod} options={[{ value: 'video', label: 'Video (Wan)' }, { value: 'sheet', label: 'Sprite sheet' }, { value: 'charsheet', label: 'Character sheet' }]} /></Field>
+        {method === 'charsheet' ? <>
+          <p className="small muted">One call to Qwen Image Edit 2511 with a pixel-art sprite-sheet LoRA draws a full sheet of 32×48 frames for 4 directions: 3 walk, 2 attack and 1 hurt frame each. You get the named 24-frame sheet plus a looping walk animation per direction.</p>
+          <Field label="FPS"><input className="input mono" type="number" min={2} max={30} value={fps} onChange={(e) => setFps(Number(e.target.value))} /></Field>
+        </> : <>
         <Field label="Action"><input className="input" value={action} onChange={(e) => setAction(e.target.value)} placeholder="walk cycle, idle breathing, attack…" /></Field>
         <div className="row wrap" style={{ gap: 4 }}>{['idle breathing', 'walk cycle', 'run cycle', 'jump', 'sword attack', 'cast a spell', 'hurt', 'death'].map((x) => <button key={x} className="chip" style={{ cursor: 'pointer' }} onClick={() => setAction(x)}>{x}</button>)}</div>
-        <Field label="Method"><Segmented value={method} onChange={setMethod} options={[{ value: 'video', label: 'Video model (Wan)' }, { value: 'sheet', label: 'Sprite sheet (edit model)' }]} /></Field>
         <div className="grid-2">
           <Field label="Frames"><input className="input mono" type="number" min={2} max={24} value={frames} onChange={(e) => setFrames(Number(e.target.value))} /></Field>
           <Field label="FPS"><input className="input mono" type="number" min={2} max={30} value={fps} onChange={(e) => setFps(Number(e.target.value))} /></Field>
         </div>
         <Field label="Model"><ModelPicker capability={method === 'video' ? 'animate' : 'edit'} value={modelId} onChange={setModelId} /></Field>
+        </>}
       </>}
       {mode === 'removeBg' && <>
         <p className="small muted">Uses an AI segmentation model for complex backgrounds. For flat backgrounds, the free <em>Remove background</em> step in Process is enough.</p>

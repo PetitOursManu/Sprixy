@@ -138,6 +138,8 @@ export interface Model {
   quality: number;
   speed: number;
   tags: string[];
+  size?: string;
+  singleImage?: boolean;
   dynamic?: boolean;
   available: boolean;
 }

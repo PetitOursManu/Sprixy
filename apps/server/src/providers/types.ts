@@ -3,7 +3,8 @@ export type ProviderId = 'fal' | 'openrouter';
 export type Capability = 'txt2img' | 'img2img' | 'edit' | 'animate' | 'removeBg' | 'train';
 
 /** LoRA compatibility family: a LoRA only works with models of the same family. */
-export type LoraFamily = 'z-image' | 'flux2-klein-4b' | 'flux2-klein-9b' | 'flux1';
+export const LORA_FAMILIES = ['z-image', 'flux2-klein-4b', 'flux2-klein-9b', 'flux2-dev', 'qwen-image', 'qwen-image-edit-2511', 'flux1'] as const;
+export type LoraFamily = (typeof LORA_FAMILIES)[number];
 
 export type PriceUnit = 'megapixel' | 'image' | 'second' | 'step' | 'request' | 'token';
 
@@ -40,6 +41,10 @@ export interface ModelDef {
   quality: number;
   speed: number;
   tags: string[];
+  /** The endpoint returns one image per call (no `num_images`): Sprixy makes one call per requested image. */
+  singleImage?: boolean;
+  /** Approximate parameter count, shown to help pick a model (e.g. "32B"). */
+  size?: string;
   /** Discovered dynamically from the provider's catalog. */
   dynamic?: boolean;
 }

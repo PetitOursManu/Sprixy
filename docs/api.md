@@ -60,7 +60,7 @@ if (job.status === 'succeeded') {
 | `generate` | `projectId`, `kind` (`sprite` `character` `object` `environment` `tileset` `texture` `ui` `icon`), `prompt` | `count` 1–4, `modelId`, `width`/`height` (native px), `referenceAssetIds`, `loras` `[{loraId, scale}]`, `seed`, `postprocess` `{removeBackground: flood\|ai\|none, pixelize, palette: project\|auto\|none, maxColors, dither, outline, cleanup}`, `tags`, `name` |
 | `variant` | `assetId`, `prompt` | `count`, `modelId`, `strength` (img2img models), `lockPalette` (default true), `loras`, `seed` |
 | `directions` | `assetId` | `directions` 4\|8, `baseDirection` south\|east, `modelId`, `lockPalette` |
-| `animate` | `assetId`, `action` | `method` video\|sheet, `frames` 2–24, `fps`, `modelId`, `resolution`, `lockPalette` |
+| `animate` | `assetId`, `action` (not needed for `charsheet`) | `method` video\|sheet\|charsheet (one-call 4-direction walk / attack / hurt sheet, see providers.md), `frames` 2–24, `fps`, `modelId`, `resolution`, `lockPalette` |
 | `removeBg` | `assetId` | `modelId` |
 | `inpaint` | `assetId`, `prompt`, `rect` `{x,y,w,h}` | `image` (PNG data URI of unsaved pixels), `modelId`, `lockPalette`, `seed` — pixels outside `rect` are never modified |
 | `train` | `name`, `datasetId` | `modelId` (trainer), `steps`, `learningRate`, `triggerWord`, `trainingType`, `projectId` |

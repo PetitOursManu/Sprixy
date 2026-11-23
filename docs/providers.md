@@ -49,10 +49,15 @@ A LoRA only works with the base model it was trained for. Sprixy tags every LoRA
 | `z-image` | Z-Image Turbo (txt2img, img2img) | `fal:z-image-trainer` |
 | `flux2-klein-4b` | FLUX.2 klein 4B | — (import) |
 | `flux2-klein-9b` | FLUX.2 klein 9B | `fal:flux2-klein-9b-trainer` |
+| `flux2-dev` | FLUX.2 dev (32B) | — (import) |
+| `qwen-image` | Qwen Image 2512 (20B) | — (import) |
+| `qwen-image-edit-2511` | Qwen Image Edit 2511 (20B) | — (import) |
 | `flux1` | FLUX.1 dev | `fal:flux1-fast-trainer` |
 
 Preset community LoRAs (Hugging Face): `tarn59/pixel_art_style_lora_z_image_turbo`,
-`reverentelusarca/elusarca-pixel-art-style-lora-zimage-turbo`, `limbicnation/pixel-art-lora`. Check each license.
+`reverentelusarca/elusarca-pixel-art-style-lora-zimage-turbo`, `limbicnation/pixel-art-lora`,
+`artificialguybr/PIXELART-REDMOND-ZIMAGETURBO`, `artificialguybr/PIXELART-REDMOND-FLUXKLEIN9B` and the
+`svntax-dev/pixel_spritesheet_4walk_combat_32x48_v1` sprite-sheet LoRA (see *Character sheet method*). Check each license.
 
 Real-run observation (Z-Image + `tarn59`, same seed): the LoRA adds detail to the raw image, which makes 32×32
 sprites *less* readable than without it. Community pixel-art LoRAs pay off at 64 px and above, or at a lower scale
@@ -85,6 +90,37 @@ is a free re-conversion of the same AI image.
 
 Conclusion: FLUX.1 dev (2024) is ~7× more expensive and worse for game sprites than the newer models. It is mainly
 useful for reusing an existing FLUX.1 LoRA from Civitai / Hugging Face.
+
+### Larger models
+
+![Larger models](images/model-comparison-large.jpg)
+
+| Model | Size | Cost / image | Result |
+| --- | --- | --- | --- |
+| FLUX.2 dev | 32B | ~$0.013 | Clean and well isolated, very close to klein 9B; tends to draw the subject small (Sprixy crops it). Takes FLUX.2 dev LoRAs. |
+| Qwen Image 2512 | 20B | ~$0.021 | The most detailed pixel art, but 3/4 perspective and fine detail get muddy at 32 px — good at 64 px+. Takes Qwen-Image LoRAs. |
+| FLUX.2 pro | — | ~$0.032 | Realistic proportions, tinted background and drop shadow; no LoRAs. Not worth 6× the price for sprites. |
+
+Bigger is not better for small sprites: the extra detail is thrown away when the image is reduced to 32×32. Keep
+Z-Image Turbo / klein 9B for 16–32 px, and try Qwen Image 2512 or FLUX.2 dev for 64 px+, busy scenes, or prompts
+that cheaper models misread.
+
+## Character sheet method (Qwen Image Edit 2511 + LoRA)
+
+`POST /api/v1/generations` with `{ "task": "animate", "assetId": "…", "method": "charsheet" }` sends the character to
+Qwen Image Edit 2511 with the [`svntax-dev/pixel_spritesheet_4walk_combat_32x48_v1`](https://huggingface.co/svntax-dev/pixel_spritesheet_4walk_combat_32x48_v1)
+LoRA (Apache-2.0), using the prompt wording it was trained on. One call (~$0.021) returns a 6×4 sheet of 32×48 frames:
+for each direction (south, west, east, north) 3 walk frames, 2 attack frames and 1 hurt frame. Sprixy removes the
+background, snaps it to the 32×48 grid, applies the palette and creates:
+
+- a `spritesheet` asset with 24 named frames (`walk_south_0`…, `attack_east_1`, `hurt_north`), exportable to
+  Godot / Unity / Phaser / Aseprite like any sheet;
+- one looping `walk <direction>` animation per direction.
+
+![Character sheet](images/character-sheet.jpg)
+
+The frame size is fixed by the LoRA (32×48). The character keeps its look and colors, but small props (like the
+hammer above) are often only drawn in the attack frames.
 
 ## Adding a provider
 

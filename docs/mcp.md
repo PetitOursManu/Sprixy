@@ -45,7 +45,7 @@ directly to disk (`outputDir`); set `SPRIXY_MCP_ALLOW_WRITE=false` to disable th
 | `sprixy_generate_asset` | paid | Generate assets following the art direction (returns previews) |
 | `sprixy_create_variant` | paid | AI variants of an asset (palette locked) |
 | `sprixy_generate_directions` | paid | 4/8-direction character views + sheet |
-| `sprixy_animate_asset` | paid | Animation via video model or sprite-sheet method |
+| `sprixy_animate_asset` | paid | Animation via video model, sprite-sheet method, or full 4-direction character sheet (walk / attack / hurt) |
 | `sprixy_remove_background_ai` | paid | BiRefNet cutout |
 | `sprixy_edit_region` | paid | Repaint a rectangle (inpainting), palette-locked |
 | `sprixy_get_generation` / `sprixy_list_generations` / `sprixy_cancel_generation` | free | Job tracking |

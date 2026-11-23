@@ -10,7 +10,7 @@ import { newId } from '../lib/crypto.js';
 import { badRequest, HttpError } from '../lib/errors.js';
 import { decodeImage, encodePng, fetchBinary, flattenOnColor } from '../lib/images.js';
 import { getModel, getProvider, DEFAULT_MODELS } from '../providers/registry.js';
-import { PRESET_LORAS } from '../providers/catalog.js';
+import { PRESET_LORAS, SPRITESHEET_LORA_ID } from '../providers/catalog.js';
 import type { ModelDef, TaskRequest, TaskResult, CostEstimate, Capability, LoraRef, ImageInput } from '../providers/types.js';
 import { getSecret } from './keys.js';
 import { assertWithinBudget } from './budget.js';
@@ -77,8 +77,13 @@ export const jobSpecSchema = z.discriminatedUnion('task', [
   z.object({
     task: z.literal('animate'),
     assetId: z.string(),
-    action: z.string().min(1).max(500),
-    method: z.enum(['video', 'sheet']).default('video'),
+    /** What the character does (required for `video` and `sheet`; ignored by `charsheet`). */
+    action: z.string().max(500).default(''),
+    /**
+     * `video`: image-to-video model, frames extracted. `sheet`: an edit model draws N frames at once.
+     * `charsheet`: Qwen Image Edit 2511 + sprite-sheet LoRA draws a full 4-direction sheet (walk ×3, attack ×2, hurt ×1).
+     */
+    method: z.enum(['video', 'sheet', 'charsheet']).default('video'),
     frames: z.number().int().min(2).max(24).default(8),
     fps: z.number().int().min(2).max(30).default(10),
     modelId: z.string().optional(),
@@ -293,6 +298,97 @@ const DIRECTION_TEXT: Record<string, string> = {
 };
 const MIRROR: Record<string, string> = { west: 'east', east: 'west', 'south-west': 'south-east', 'north-west': 'north-east', 'south-east': 'south-west', 'north-east': 'north-west' };
 
+/** Models without `num_images` get one call per image (seed offset so the results differ). */
+function perImageRequests(model: ModelDef, req: TaskRequest): TaskRequest[] {
+  if (!model.singleImage || !('numImages' in req) || req.numImages <= 1) return [req];
+  return Array.from({ length: req.numImages }, (_, i) => ({ ...req, numImages: 1, seed: req.seed !== undefined ? req.seed + i : undefined }) as TaskRequest);
+}
+
+async function callAll(ctx: Ctx, model: ModelDef, reqs: TaskRequest[]): Promise<{ seed?: number; imgs: { img: RGBAImage; raw: Buffer }[] }> {
+  let seed: number | undefined;
+  const imgs: { img: RGBAImage; raw: Buffer }[] = [];
+  for (let i = 0; i < reqs.length; i++) {
+    if (reqs.length > 1) ctx.progress(`Image ${i + 1}/${reqs.length}…`);
+    const res = await ctx.call(model, reqs[i]);
+    seed ??= res.seed;
+    imgs.push(...await resultImages(res, ctx.signal));
+  }
+  return { seed, imgs };
+}
+
+// ───────────────────── Character sheet (Qwen Edit 2511 + LoRA) ─────────────────────
+
+/** Layout learned by the sprite-sheet LoRA: 6 columns × 4 rows of 32×48 frames. */
+export const CHARSHEET = {
+  modelId: 'fal:qwen-image-edit-2511',
+  columns: 6, rows: 4, frameW: 32, frameH: 48, size: 768,
+  directions: ['south', 'west', 'east', 'north'] as const,
+  /** Column → action (frame index inside the action). */
+  columnsLayout: [['walk', 0], ['walk', 1], ['walk', 2], ['attack', 0], ['attack', 1], ['hurt', 0]] as const,
+};
+
+/** Prompt in the exact wording the LoRA was trained on. */
+export function charSheetPrompt(): string {
+  const row = (n: string, dir: string, back = '') =>
+    `${n} row is 3 walking frames ${back}facing ${dir}, 2 arm swing attack frames ${back}facing ${dir}, and 1 hurt frame ${back}facing ${dir}.`;
+  return [
+    'Create a pixel art spritesheet of the character in the image. Keep the appearance the same.',
+    'The spritesheet is a 6 by 4 grid of four rows and six columns of frames -',
+    row('First', 'down'), row('Second', 'left'), row('Third', 'right'), row('Fourth', 'up', 'back view '),
+  ].join(' ');
+}
+
+/** Cut a generated 6×4 sheet into 24 palette-fixed 32×48 frames (row-major). */
+export function sliceCharacterSheet(sheet: RGBAImage, fix: (f: RGBAImage) => RGBAImage): RGBAImage[] {
+  const { columns, rows, frameW, frameH } = CHARSHEET;
+  const cut = cutKey(sheet, 16, true);
+  const small = pixelize(cut, { width: columns * frameW, height: rows * frameH });
+  return sliceGrid(small, { columns, rows }).images.map(fix);
+}
+
+async function planCharacterSheet(
+  userId: string, spec: Extract<JobSpec, { task: 'animate' }>, base: ReturnType<typeof getAssetRow>, img: RGBAImage,
+  paletteFix: (f: RGBAImage) => RGBAImage, warnings: string[],
+): Promise<Plan> {
+  if (spec.modelId && spec.modelId !== CHARSHEET.modelId) warnings.push(`The character sheet method always uses Qwen Image Edit 2511 — ${spec.modelId} ignored`);
+  const model = await getModel(CHARSHEET.modelId);
+  const loras = resolveLoras(userId, model, [{ loraId: SPRITESHEET_LORA_ID }], warnings);
+  const finalPrompt = charSheetPrompt();
+  const ref = await pngInput(referenceFrom(img, CHARSHEET.size));
+  const req: TaskRequest = { task: 'edit', prompt: finalPrompt, images: [ref], width: CHARSHEET.size, height: CHARSHEET.size, numImages: 1, loras: loras.map((l) => l.ref) };
+  const calls = [{ model, req }];
+  const ms = Math.round(1000 / spec.fps);
+  return {
+    task: 'animate', projectId: base.project_id, kind: 'animation', model, prompt: spec.action || 'character sheet', finalPrompt, warnings, calls,
+    estimate: await sumEstimates(userId, calls),
+    async execute(ctx) {
+      const [out] = await resultImages(await ctx.call(model, req), ctx.signal);
+      ctx.progress('Slicing the 6×4 sheet…');
+      const frames = sliceCharacterSheet(out.img, paletteFix);
+      const names: string[] = [];
+      CHARSHEET.directions.forEach((d) => CHARSHEET.columnsLayout.forEach(([a, i]) => names.push(a === 'hurt' ? `hurt_${d}` : `${a}_${d}_${i}`)));
+      const full = packSheet(frames, { columns: CHARSHEET.columns, names, durations: frames.map(() => ms) });
+      const assets: AssetDto[] = [await createAsset({
+        userId, projectId: base.project_id, kind: 'spritesheet', name: `${base.name} · character sheet`.slice(0, 120), image: full.image, source: out.raw, parentId: base.id, generationId: ctx.genId,
+        frames: full.frames, meta: { method: 'charsheet', modelId: model.id, layout: { columns: CHARSHEET.columns, rows: CHARSHEET.rows, directions: CHARSHEET.directions, actions: ['walk', 'walk', 'walk', 'attack', 'attack', 'hurt'] } },
+        tags: ['animation', 'spritesheet', 'directions'],
+      })];
+      // One looping walk cycle per direction (frames 0-1-2-1).
+      for (let r = 0; r < CHARSHEET.rows; r++) {
+        const row = frames.slice(r * CHARSHEET.columns, (r + 1) * CHARSHEET.columns);
+        const d = CHARSHEET.directions[r];
+        const walk = [row[0], row[1], row[2], row[1]];
+        const sheet = packSheet(walk, { columns: walk.length, names: walk.map((_, i) => `walk_${d}_${i}`), durations: walk.map(() => ms) });
+        assets.push(await createAsset({
+          userId, projectId: base.project_id, kind: 'animation', name: `${base.name} · walk ${d}`.slice(0, 120), image: sheet.image, parentId: base.id, generationId: ctx.genId,
+          frames: sheet.frames, meta: { fps: spec.fps, action: `walk ${d}`, method: 'charsheet', modelId: model.id, direction: d }, tags: ['animation', 'walk'],
+        }));
+      }
+      return { assets };
+    },
+  };
+}
+
 // ───────────────────────────── Planning ─────────────────────────────
 
 export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
@@ -321,7 +417,8 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
     const req: TaskRequest = useRefs
       ? { task: 'edit', prompt: finalPrompt, images: refImages, width: gsize.width, height: gsize.height, numImages: spec.count, seed: spec.seed, loras: loras.map((l) => l.ref) }
       : { task: 'txt2img', prompt: finalPrompt, width: gsize.width, height: gsize.height, numImages: spec.count, seed: spec.seed, loras: loras.map((l) => l.ref), negativePrompt: ad.negativePrompt };
-    const calls: { model: ModelDef; req: TaskRequest }[] = [{ model, req }];
+    const reqs = perImageRequests(model, req);
+    const calls: { model: ModelDef; req: TaskRequest }[] = reqs.map((r) => ({ model, req: r }));
     let bgModel: ModelDef | null = null;
     if (post.removeBackground === 'ai') {
       bgModel = await pickModel(ad.models.removeBg, [], 'removeBg');
@@ -331,8 +428,8 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
       task: 'generate', projectId: spec.projectId, kind, model, prompt: spec.prompt, finalPrompt, warnings,
       calls, estimate: await sumEstimates(userId, calls),
       async execute(ctx) {
-        const res = await ctx.call(model, req);
-        const imgs = await resultImages(res, ctx.signal);
+        const res = await callAll(ctx, model, reqs);
+        const imgs = res.imgs;
         const assets: AssetDto[] = [];
         for (let i = 0; i < imgs.length; i++) {
           let raw = imgs[i].img;
@@ -377,13 +474,13 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
       ? { task: 'edit', prompt: finalPrompt, images: [ref], width: gsize.width, height: gsize.height, numImages: spec.count, seed: spec.seed, loras: loras.map((l) => l.ref) }
       : { task: 'img2img', prompt: finalPrompt, image: ref, strength: spec.strength, width: gsize.width, height: gsize.height, numImages: spec.count, seed: spec.seed, loras: loras.map((l) => l.ref) };
     const sourcePalette = spec.lockPalette ? imagePalette(img) : undefined;
-    const calls = [{ model, req }];
+    const reqs = perImageRequests(model, req);
+    const calls = reqs.map((r) => ({ model, req: r }));
     return {
       task: 'variant', projectId: base.project_id, kind: base.kind, model, prompt: spec.prompt, finalPrompt, warnings, calls,
       estimate: await sumEstimates(userId, calls),
       async execute(ctx) {
-        const res = await ctx.call(model, req);
-        const imgs = await resultImages(res, ctx.signal);
+        const { imgs } = await callAll(ctx, model, reqs);
         const assets: AssetDto[] = [];
         for (let i = 0; i < imgs.length; i++) {
           const sprite = toSprite(imgs[i].img, {
@@ -464,6 +561,9 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
       return out;
     };
     const durations = (n: number) => Array.from({ length: n }, () => Math.round(1000 / spec.fps));
+
+    if (spec.method === 'charsheet') return planCharacterSheet(userId, spec, base, img, paletteFix, warnings);
+    if (!spec.action.trim()) throw badRequest('"action" is required for the video and sheet methods');
 
     if (spec.method === 'video') {
       const model = await pickModel(spec.modelId, [ad.models.animate], 'animate');
