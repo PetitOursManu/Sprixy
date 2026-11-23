@@ -111,9 +111,12 @@ export function hardenAlpha(img: RGBAImage, threshold = 127): RGBAImage {
 export function applyMask(img: RGBAImage, mask: RGBAImage, threshold?: number): RGBAImage {
   if (mask.width !== img.width || mask.height !== img.height) throw new Error('Mask size mismatch');
   const out = cloneImage(img);
+  // A cutout (RGBA with transparency) is read through its alpha channel; an opaque image is read as a
+  // grayscale mask. The mode is decided once for the whole mask, never per pixel.
+  let useAlpha = false;
+  for (let i = 3; i < mask.data.length; i += 4) if (mask.data[i] < 255) { useAlpha = true; break; }
   for (let i = 0; i < out.data.length; i += 4) {
-    // Use mask alpha if it has transparency, otherwise its luminance.
-    const m = mask.data[i + 3] < 255 ? mask.data[i + 3] : mask.data[i];
+    const m = useAlpha ? mask.data[i + 3] : Math.round(0.2126 * mask.data[i] + 0.7152 * mask.data[i + 1] + 0.0722 * mask.data[i + 2]);
     const a = Math.round((out.data[i + 3] * m) / 255);
     out.data[i + 3] = threshold === undefined ? a : a > threshold ? 255 : 0;
   }

@@ -138,6 +138,7 @@ function TrainModal({ onClose }: { onClose: () => void }) {
       <button className="btn primary" disabled={!spec || !confirmCost || run.isPending || !!est.error} onClick={() => run.mutate()}>Start training</button>
     </>}>
       {(datasets.data?.items.length ?? 0) === 0 && <div className="notice warn small">You need a dataset first. <Link to="/datasets">Create a dataset</Link> with at least 4 authorized images (10+ recommended).</div>}
+      <div className="small muted">Low on provider credits? Export the dataset from its page (“Export for external training”), train it on your own GPU or any trainer (ai-toolkit, kohya, OneTrainer, Civitai…), then use <em>Import LoRA</em>.</div>
       <div className="grid-2">
         <Field label="LoRA name"><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. My studio style" /></Field>
         <Field label="Dataset">

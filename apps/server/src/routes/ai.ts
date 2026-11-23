@@ -13,6 +13,7 @@ import type { Capability, ProviderId, TaskRequest } from '../providers/types.js'
 import { hasKey, getSecret } from '../services/keys.js';
 import { jobSpecSchema, createJob, estimateJob, getGeneration, listGenerations, cancelJob } from '../services/jobs.js';
 import { getAssetRow, assertProject } from '../services/assets.js';
+import { buildExternalTrainingExport } from '../services/datasets.js';
 
 const idParam = z.object({ id: z.string() });
 
@@ -220,6 +221,23 @@ export async function aiRoutes(app: FastifyInstance) {
       getDb().run('INSERT INTO dataset_images (id,dataset_id,file,caption,source_note,rights_confirmed,created_at) VALUES (?,?,?,?,?,1,?)', newId('dsi_'), d.id, file, fields.caption ?? '', fields.sourceNote ?? 'upload', Date.now());
     }
     return { added: files.length };
+  });
+
+  r.get('/api/v1/datasets/:id/export', {
+    schema: {
+      tags: ['datasets'], summary: 'Download the dataset ready for external LoRA training (images + .txt captions + metadata.jsonl + README) — free',
+      params: idParam, querystring: z.object({ triggerWord: z.string().max(60).optional() }),
+    },
+  }, async (req, reply) => {
+    const u = requireUser(req);
+    const d = ownDataset(u.id, req.params.id);
+    const images = getDb().all<{ file: string; caption: string; rights_confirmed: number }>('SELECT * FROM dataset_images WHERE dataset_id = ? ORDER BY created_at', d.id);
+    if (!images.length) throw badRequest('This dataset has no image');
+    if (images.some((i) => !i.rights_confirmed)) throw badRequest('Every dataset image must be confirmed as authorized for training');
+    const zip = await buildExternalTrainingExport(d.name, images, { defaultCaption: d.default_caption || 'pixel art', triggerWord: req.query.triggerWord });
+    const fname = d.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'dataset';
+    reply.header('Content-Disposition', `attachment; filename="${fname}_training_dataset.zip"`).type('application/zip');
+    return zip;
   });
 
   r.get('/api/v1/datasets/:id/images/:imageId', { schema: { tags: ['datasets'], summary: 'Dataset image file', params: z.object({ id: z.string(), imageId: z.string() }) } }, async (req, reply) => {

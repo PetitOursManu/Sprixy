@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zipSync } from 'fflate';
 import {
   type RGBAImage, type Frame,
   removeBackgroundFlood, estimateBackgroundColor, removeKeyColorRegions, contentBounds, crop, pixelize, resizeCanvas, runPipeline, hardenAlpha, removeOrphans,
@@ -10,7 +9,6 @@ import { getDb, parseJson } from '../db/index.js';
 import { newId } from '../lib/crypto.js';
 import { badRequest, HttpError } from '../lib/errors.js';
 import { decodeImage, encodePng, fetchBinary, flattenOnColor } from '../lib/images.js';
-import { readStored } from '../lib/storage.js';
 import { getModel, getProvider, DEFAULT_MODELS } from '../providers/registry.js';
 import { PRESET_LORAS } from '../providers/catalog.js';
 import type { ModelDef, TaskRequest, TaskResult, CostEstimate, Capability, LoraRef, ImageInput } from '../providers/types.js';
@@ -22,6 +20,7 @@ import {
 } from './artDirection.js';
 import { assertProject, createAsset, getAssetRow, loadAssetImage, loadSourceImage, imagePalette, type AssetDto } from './assets.js';
 import { extractFrames } from './video.js';
+import { buildTrainingZip } from './datasets.js';
 import { config } from '../config.js';
 
 // ───────────────────────────── Schemas ─────────────────────────────
@@ -525,8 +524,12 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
     const model = await pickModel(spec.modelId, [ad.models.removeBg], 'removeBg');
     const img = await loadAssetImage(base);
     const k = Math.max(1, Math.floor(1024 / Math.max(img.width, img.height)));
-    const big = upscaleInteger({ ...img, data: new Uint8ClampedArray(img.data) }, k);
-    for (let i = 3; i < big.data.length; i += 4) big.data[i] = 255; // model sees the full original pixels
+    // Flatten transparent areas onto a neutral that contrasts with the subject (a dark sprite on black
+    // would be segmented as background).
+    let lum = 0, n = 0;
+    for (let i = 0; i < img.data.length; i += 4) if (img.data[i + 3] > 127) { lum += 0.2126 * img.data[i] + 0.7152 * img.data[i + 1] + 0.0722 * img.data[i + 2]; n++; }
+    const neutral: [number, number, number] = n && lum / n < 110 ? [232, 232, 232] : [28, 28, 32];
+    const big = flattenOnColor(upscaleInteger(img, k), neutral);
     const req: TaskRequest = { task: 'removeBg', image: await pngInput(big) };
     const calls = [{ model, req }];
     return {
@@ -535,9 +538,8 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
       async execute(ctx) {
         const [out] = await resultImages(await ctx.call(model, req), ctx.signal);
         const mask = resizeNearest(out.img, img.width, img.height);
-        const opaque = { ...img, data: new Uint8ClampedArray(img.data) };
-        for (let i = 3; i < opaque.data.length; i += 4) opaque.data[i] = 255;
-        const result = removeOrphans(applyMask(opaque, mask, 127));
+        // Multiply with the existing alpha: pixels that were already transparent stay transparent.
+        const result = removeOrphans(applyMask(img, mask, 127));
         const asset = await createAsset({
           userId, projectId: base.project_id, kind: base.kind, name: `${base.name} · cutout`, image: result, parentId: base.id, generationId: ctx.genId,
           meta: { modelId: model.id, palette: imagePalette(result) }, tags: ['cutout'],
@@ -562,17 +564,7 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
     estimate: await sumEstimates(userId, calls),
     async execute(ctx) {
       ctx.progress(`Packaging ${images.length} images…`);
-      const files: Record<string, Uint8Array> = {};
-      for (const [i, im] of images.entries()) {
-        const name = `img_${String(i + 1).padStart(3, '0')}`;
-        // Upscale tiny pixel art so trainers see crisp pixels (nearest neighbour).
-        const decoded = await decodeImage(await readStored(im.file));
-        const k = Math.max(1, Math.floor(1024 / Math.max(decoded.width, decoded.height)));
-        files[`${name}.png`] = new Uint8Array(await encodePng(flattenOnColor(upscaleInteger(decoded, k), [255, 255, 255])));
-        const caption = im.caption || defaultCaption;
-        files[`${name}.txt`] = new TextEncoder().encode(spec.triggerWord && !caption.includes(spec.triggerWord) ? `${spec.triggerWord}, ${caption}` : caption);
-      }
-      const zip = Buffer.from(zipSync(files, { level: 6 }));
+      const zip = await buildTrainingZip(images, { defaultCaption, triggerWord: spec.triggerWord });
       const res = await ctx.call(model, { ...req, zip } as TaskRequest);
       if (!res.lora?.url) throw new Error('Training finished without a LoRA file');
       const id = newId('lora_');

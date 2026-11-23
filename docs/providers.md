@@ -57,6 +57,14 @@ Preset community LoRAs (Hugging Face): `tarn59/pixel_art_style_lora_z_image_turb
 Training requires a dataset whose images are all confirmed as owned/authorized. Pixel art is upscaled with
 nearest-neighbour before upload so trainers see crisp pixels. The cost estimate must be accepted before training starts.
 
+### Training outside Sprixy (free / own GPU)
+
+LoRA training needs a GPU with roughly 16–24 GB of VRAM for current base models, so Sprixy (which requires no GPU)
+does not train locally. Instead, **Datasets → Export for external training** ()
+downloads the dataset in the universal layout (nearest-neighbour upscaled images + same-name  captions +
+ + README). Train it with ai-toolkit, kohya-ss, OneTrainer, Civitai or any trainer — on your own
+GPU or free notebook GPU time — then use **LoRAs → Import LoRA** with the matching family.
+
 ## Adding a provider
 
 1. Create `apps/server/src/providers/<name>.ts` implementing `ProviderAdapter` (`types.ts`):

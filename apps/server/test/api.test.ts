@@ -126,6 +126,19 @@ describe('Sprixy API', () => {
     expect(gif.rawPayload.subarray(0, 6).toString()).toBe('GIF89a');
   });
 
+  it('exports a dataset for external LoRA training (free)', async () => {
+    const ds = await call('POST', '/api/v1/datasets', { name: 'Mage style', defaultCaption: 'pixel art mage' });
+    const dsId = ds.json().id;
+    const refused = await call('POST', `/api/v1/datasets/${dsId}/images`, { assetIds: [assetId] });
+    expect(refused.statusCode).toBe(400); // rights confirmation is mandatory
+    expect((await call('POST', `/api/v1/datasets/${dsId}/images`, { assetIds: [assetId], rightsConfirmed: true })).statusCode).toBe(200);
+    const res = await call('GET', `/api/v1/datasets/${dsId}/export?triggerWord=sprx`);
+    expect(res.statusCode).toBe(200);
+    const files = unzipSync(new Uint8Array(res.rawPayload));
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(['dataset/img_001.png', 'dataset/img_001.txt', 'dataset/metadata.jsonl', 'README.md']));
+    expect(new TextDecoder().decode(files['dataset/img_001.txt'])).toBe('sprx, pixel art mage');
+  });
+
   it('enforces BYOK: jobs fail fast without a provider key, estimates work', async () => {
     const spec = { task: 'generate', projectId, kind: 'character', prompt: 'a tiny wizard', count: 2 };
     const est = await call('POST', '/api/v1/generations/estimate', spec);

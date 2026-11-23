@@ -235,3 +235,25 @@ describe('key-color shadows (real AI output case)', () => {
     expect(getPixel(out, 6, 16)[3]).toBe(255);
   });
 });
+
+describe('applyMask (BiRefNet cutouts)', () => {
+  it('uses the alpha of a cutout even where the subject is dark and opaque', async () => {
+    const { applyMask } = await import('../src/index.js');
+    const img = createImage(2, 1, [200, 200, 200, 255]);
+    const cutout = createImage(2, 1);
+    setPixel(cutout, 0, 0, [10, 10, 20, 255]); // dark, fully opaque subject pixel
+    setPixel(cutout, 1, 0, [0, 0, 0, 0]);      // background
+    const out = applyMask(img, cutout, 127);
+    expect(getPixel(out, 0, 0)[3]).toBe(255);
+    expect(getPixel(out, 1, 0)[3]).toBe(0);
+  });
+  it('reads an opaque mask as grayscale', async () => {
+    const { applyMask } = await import('../src/index.js');
+    const img = createImage(2, 1, [200, 200, 200, 255]);
+    const mask = createImage(2, 1, [0, 0, 0, 255]);
+    setPixel(mask, 0, 0, [255, 255, 255, 255]);
+    const out = applyMask(img, mask, 127);
+    expect(getPixel(out, 0, 0)[3]).toBe(255);
+    expect(getPixel(out, 1, 0)[3]).toBe(0);
+  });
+});

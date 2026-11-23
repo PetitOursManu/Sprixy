@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, del, get, patch, post } from '../api';
+import { api, del, download, get, patch, post, qs } from '../api';
 import { useProjects } from '../hooks';
 import { Empty, Field, Icon, Modal, useToast } from '../components/ui';
 import { AssetPicker } from '../components/AssetPicker';
@@ -95,7 +95,8 @@ export function DatasetPage() {
             </select>
             <span className="small muted">{d.images.length} images · default caption: <em>{d.defaultCaption || 'none'}</em></span>
             <div className="grow" />
-            <Link className="btn primary" to="/loras">Train a LoRA →</Link>
+            <button className="btn" disabled={!d.images.length} title="Images + captions ready for ai-toolkit, kohya, OneTrainer, Civitai… (free)" onClick={() => { const t = prompt('Trigger word to prepend to captions (optional)') ?? undefined; void download(`/api/v1/datasets/${d.id}/export${qs({ triggerWord: t || undefined })}`).catch((e) => toast('error', (e as Error).message)); }}><Icon name="download" /> Export for external training</button>
+            <Link className="btn primary" to="/loras">Train on fal.ai →</Link>
           </div>
           <input ref={fileRef} type="file" multiple accept="image/*" hidden onChange={(e) => { const f = [...(e.target.files ?? [])]; if (f.length) upload.mutate(f); e.target.value = ''; }} />
         </div></div>
