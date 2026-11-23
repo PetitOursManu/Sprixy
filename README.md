@@ -35,15 +35,17 @@ so a whole game keeps a coherent look.
 | **Generation** | Characters, sprites, objects, icons, UI elements, environments, tilesets, seamless textures. 1–4 images per job, seeds, style references. |
 | **Consistency** | Per-project art direction injected into prompts; palette lock; references; project LoRAs; variants keep the source palette. |
 | **Characters** | 4 or 8 facing directions from one sprite (west-facing views mirrored for free) + direction spritesheet. |
+| **Region edit** | Select a rectangle in the editor and describe a change: an edit model repaints it, palette-locked, and nothing outside the selection changes. |
+| **Autotiles** | 16-tile Wang corner terrain sets built for free from two textures, exported as Godot terrain sets and Tiled wangsets. |
 | **Animation** | Image-to-video (Wan) → frames extracted, background removed, pixelized, palette-locked, aligned; or an edit model drawing a sprite sheet that is auto-sliced. |
 | **Models** | Multi-provider: fal.ai (Z-Image Turbo, FLUX.2 [klein] 4B/9B, Wan 2.2/2.6, BiRefNet, LoRA trainers) and every image model on OpenRouter (Gemini image, GPT-image, FLUX.2, Seedream, Qwen…). Choose per job by price, quality and capabilities. |
 | **LoRAs** | Community presets, import by URL / Hugging Face id, train your own on fal.ai from an authorized dataset (cost shown and confirmed first), per-project LoRAs with strength. |
 | **Free processing** | Background removal (flood fill / chroma key), true-grid pixelization with automatic grid detection, nearest-neighbour resize, palette reduction (median cut + OKLab k-means), palette mapping with 9 presets or your own, Floyd–Steinberg / Atkinson / Bayer dithering, outline, orphan & pinhole cleanup, recolor (HSL, palette swap), seamless tiles, trim/canvas/crop/flip, spritesheet slicing (grid or automatic), frame alignment. **No AI call, no cost.** |
 | **Editor** | Layered pixel editor: pencil, eraser, fill, line, rectangle, selection (move / copy / paste), eyedropper, mirror drawing, palettes, 200-step history, zoom & pan, grid, frames, onion skin, live animation preview. |
 | **Library** | Projects, search, kinds, tags, favorites, collections, variant trees, generation history with prompt and cost, batch processing / tagging / export. |
-| **Export** | PNG (transparent), GIF, WebP (animated), spritesheet PNG + JSON atlas, metadata JSON, ZIP bundle, **Godot 4** (SpriteFrames / TileSet `.tres`), **Unity** (`.meta` with Point filtering + sprite slicing), **Phaser** (atlas + animations JSON). Integer upscaling. |
+| **Export** | PNG (transparent), GIF, WebP (animated), spritesheet PNG + JSON atlas, metadata JSON, ZIP bundle, **Godot 4** (SpriteFrames / TileSet `.tres`), **Unity** (`.meta` with Point filtering + sprite slicing), **Phaser** (atlas + animations JSON + Tiled `.tsx`), **Aseprite** (`.aseprite` with layers and frames). Integer upscaling. |
 | **Costs** | BYOK keys encrypted server-side (AES-256-GCM). Live prices from fal’s pricing API, real cost from OpenRouter. Estimates before every job, per-day/provider/model usage, monthly & daily budgets, per-job cap, daily job limit (HTTP 402 when exceeded). |
-| **Integrations** | Documented REST API (OpenAPI at `/api/docs`), API tokens, official **MCP server** (remote HTTP at `/mcp` or local stdio `@sprixy/mcp`), TypeScript client `@sprixy/client` — usable by Mocky, Muse or any software. |
+| **Integrations** | Documented REST API (OpenAPI at `/api/docs`), API tokens, signed job webhooks, official **MCP server** (remote HTTP at `/mcp` or local stdio `@sprixy/mcp`), TypeScript client `@sprixy/client` — usable by Mocky, Muse or any software. |
 
 ## Quick start (Docker)
 
@@ -91,6 +93,7 @@ docs/                             architecture, API, MCP, providers, deployment,
 - [Providers, models, pricing & adding a provider](docs/providers.md)
 - [Deployment (Docker, Coolify)](docs/deployment.md)
 - [Roadmap & development phases](docs/roadmap.md)
+- [Competitive analysis (PixelLab, Retro Diffusion, SpriteKiln)](docs/competitive-analysis.md)
 
 ## 🇫🇷 En bref
 

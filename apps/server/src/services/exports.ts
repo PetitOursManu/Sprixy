@@ -3,9 +3,10 @@ import { randomBytes } from 'node:crypto';
 import { crop, packSheet, sliceGrid, upscaleInteger, type RGBAImage, type Frame } from '@sprixy/core';
 import { encodePng, encodeGif, encodeWebp, encodeAnimatedWebp } from '../lib/images.js';
 import { badRequest } from '../lib/errors.js';
-import { getAssetRow, loadAssetImage, assetDto, type AssetRow } from './assets.js';
+import { getAssetRow, loadAssetImage, assetDto, loadEditorDoc, type AssetRow } from './assets.js';
+import { encodeAseprite, decodeEditorDoc, flattenDoc, type AseFrame, type AseLayer } from '../lib/aseprite.js';
 
-export const EXPORT_FORMATS = ['png', 'gif', 'webp', 'spritesheet', 'json', 'zip', 'godot', 'unity', 'phaser'] as const;
+export const EXPORT_FORMATS = ['png', 'gif', 'webp', 'spritesheet', 'json', 'zip', 'godot', 'unity', 'phaser', 'aseprite'] as const;
 export type ExportFormat = (typeof EXPORT_FORMATS)[number];
 
 export interface ExportOptions {
@@ -421,6 +422,32 @@ export async function exportAsset(userId: string, id: string, format: ExportForm
       };
       files['README.md'] = enc(readme(ua, 'Unity', [png, `${png}.meta`]) + `\nCopy both files together into your Assets folder: the .meta configures Point filtering, no compression and slices the sprites (Sprite Mode: Multiple, ${ppu} pixels per unit).\nFor animations, select the sliced sprites and drag them into the scene to create an Animation Clip.\n`);
       return { filename: `${a.name}_unity.zip`, mime: 'application/zip', data: Buffer.from(zipSync(files)) };
+    }
+    case 'aseprite': {
+      // Prefer the layered editor document when it still matches the asset pixels.
+      const frames = frameImages(a);
+      const ds = durations(a);
+      const doc = decodeEditorDoc(await loadEditorDoc(userId, id).catch(() => null));
+      let width = frames[0].width, height = frames[0].height;
+      let layers: AseLayer[] = [{ name: 'Sprite', visible: true, opacity: 1 }];
+      let aseFrames: AseFrame[] = frames.map((f, i) => ({ durationMs: ds[i] ?? 100, cels: [f.data] }));
+      if (doc && doc.width === width && doc.height === height && doc.frames.length === frames.length) {
+        const same = frames.every((f, i) => {
+          const flat = flattenDoc(doc, i);
+          for (let k = 0; k < flat.length; k += 4) {
+            if (flat[k + 3] < 8 && f.data[k + 3] < 8) continue;
+            if (Math.abs(flat[k] - f.data[k]) > 3 || Math.abs(flat[k + 1] - f.data[k + 1]) > 3 || Math.abs(flat[k + 2] - f.data[k + 2]) > 3 || Math.abs(flat[k + 3] - f.data[k + 3]) > 3) return false;
+          }
+          return true;
+        });
+        if (same) { layers = doc.layers; aseFrames = doc.frames; width = doc.width; height = doc.height; }
+      }
+      if (scale > 1) {
+        const up = (c: Uint8ClampedArray | null) => (c ? upscaleInteger({ width, height, data: c }, scale).data : null);
+        aseFrames = aseFrames.map((f) => ({ durationMs: f.durationMs, cels: f.cels.map(up) }));
+        width *= scale; height *= scale;
+      }
+      return { filename: `${base}.aseprite`, mime: 'application/octet-stream', data: encodeAseprite(width, height, layers, aseFrames, a.frames?.length ? a.name : undefined) };
     }
     case 'phaser': {
       const png = `${a.name}.png`;

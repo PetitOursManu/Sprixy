@@ -53,7 +53,7 @@ export function LibraryPage() {
 
   return (
     <div className="page">
-      <div className="split left" style={{ gridTemplateColumns: '220px minmax(0,1fr)' }}>
+      <div className="split lib">
         <aside className="col sticky" style={{ gap: 14 }}>
           <input className="input" placeholder="Search name, prompt, tag…" value={q} onChange={(e) => setQ(e.target.value)} />
           <Field label="Kind">
@@ -259,7 +259,8 @@ const EXPORTS: { id: string; label: string; hint: string }[] = [
   { id: 'zip', label: 'Bundle', hint: 'PNG, WebP, GIF, frames, JSON' },
   { id: 'godot', label: 'Godot 4', hint: 'SpriteFrames / TileSet .tres' },
   { id: 'unity', label: 'Unity', hint: 'PNG + .meta (Point, sliced)' },
-  { id: 'phaser', label: 'Phaser', hint: 'Atlas JSON + anims JSON' },
+  { id: 'phaser', label: 'Phaser', hint: 'Atlas + anims JSON, Tiled .tsx' },
+  { id: 'aseprite', label: 'Aseprite', hint: '.aseprite with layers & frames' },
 ];
 
 export function ExportPicker({ onExport, busy }: { onExport: (format: string, scale: number) => void; busy?: boolean }) {

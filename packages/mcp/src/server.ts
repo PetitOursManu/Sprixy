@@ -291,9 +291,9 @@ export function createSprixyMcpServer(client: SprixyClient, opts: SprixyMcpOptio
   // ── Export ──
   server.registerTool('sprixy_export_asset', {
     title: 'Export asset',
-    description: 'Export an asset as png | gif | webp | spritesheet | json | zip | godot | unity | phaser. In local (stdio) mode, pass outputDir to write the file to disk; otherwise the file is returned as an embedded resource.',
+    description: 'Export an asset as png | gif | webp | spritesheet | json | zip | godot | unity | phaser | aseprite (layers kept when edited in Sprixy). In local (stdio) mode, pass outputDir to write the file to disk; otherwise the file is returned as an embedded resource.',
     inputSchema: {
-      assetId: z.string(), format: z.enum(['png', 'gif', 'webp', 'spritesheet', 'json', 'zip', 'godot', 'unity', 'phaser']),
+      assetId: z.string(), format: z.enum(['png', 'gif', 'webp', 'spritesheet', 'json', 'zip', 'godot', 'unity', 'phaser', 'aseprite']),
       scale: z.number().int().min(1).max(32).optional(), fps: z.number().int().optional(), outputDir: z.string().optional(),
     },
   }, guard(async ({ assetId, format, scale, fps, outputDir }) => {

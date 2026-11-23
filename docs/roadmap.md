@@ -30,12 +30,18 @@ settings.
 ## Phase 6 — Deployment ✅
 Dockerfile (Node 24 + ffmpeg, non-root, health check), docker compose, Coolify guide, CI.
 
+## Phase 7 — Real-world validation & competitive features ✅
+All AI jobs tested against real fal.ai calls (generation, variants, directions, video & sheet animations, AI cutout,
+region edit) and fixed accordingly (key-color shadows, cutout masks, animation facing). Added from the competitive
+study ([competitive-analysis.md](competitive-analysis.md)): selection-based AI edit, Wang autotile terrain sets with
+Godot terrains and Tiled wangsets, native `.aseprite` export, job webhooks, dataset export for external LoRA training,
+mobile layout fixes.
+
 ## Next
 - Publish `@sprixy/mcp`, `@sprixy/client` and `@sprixy/core` to npm.
+- Real-run validation of LoRA training on fal.ai.
 - More providers (Replicate, Together, self-hosted ComfyUI endpoint) through the `ProviderAdapter` interface.
-- Inpainting / masked edits in the editor (send a selection to an edit model).
-- Tileset autotiling templates (Wang / blob 47) and Godot terrain sets.
-- Webhooks for job completion (fal supports `fal_webhook`) instead of polling.
+- Skeleton / keypoint-driven animation; blob-47, isometric and hex tiles; normal maps.
 - Team workspaces and shared projects; per-user quotas set by the admin.
-- Aseprite `.ase` import/export.
+- Aseprite `.aseprite` import.
 - Palette-aware AI upscaling and "pixel cleanup" model option.

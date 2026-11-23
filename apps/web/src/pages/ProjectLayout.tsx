@@ -24,7 +24,7 @@ export function ProjectLayout() {
           <Link to="/">Projects</Link><span>/</span><strong>{p.name}</strong>
         </div>
         <div className="grow" />
-        <div className="row small muted">
+        <div className="row small muted hide-mobile">
           <span className="mono">{p.artDirection.spriteSize.width}×{p.artDirection.spriteSize.height}</span>
           <span className="mono">{p.artDirection.perspective}</span>
           {p.effectivePalette.length > 0 && <Swatches colors={p.effectivePalette} size="sm" max={16} />}

@@ -163,6 +163,50 @@ describe('Sprixy API', () => {
     expect(tsx.match(/<wangtile /g)).toHaveLength(16);
   });
 
+  it('exports .aseprite files readable by an independent parser (layers + frames)', async () => {
+    const Aseprite = (await import('ase-parser')).default as unknown as new (buf: Buffer, name: string) => {
+      parse(): void; numFrames: number; width: number; height: number; colorDepth: number;
+      layers: { name: string; opacity: number }[];
+      frames: { frameDuration: number; cels: { layerIndex: number; w: number; h: number; rawCelData: Buffer }[] }[];
+      tags: { name: string; from: number; to: number }[];
+    };
+    // Animated asset → 3 frames, one tag
+    const list = (await call('GET', `/api/v1/assets?projectId=${projectId}&kind=animation`)).json();
+    const anim = list.items[0];
+    const res = await call('GET', `/api/v1/assets/${anim.id}/export?format=aseprite`);
+    expect(res.statusCode).toBe(200);
+    const ase = new Aseprite(res.rawPayload, 'anim.aseprite');
+    ase.parse();
+    expect(ase.numFrames).toBe(3);
+    expect(ase.colorDepth).toBe(32);
+    expect(ase.width).toBe(anim.frames[0].rect.w);
+    expect(ase.frames[0].frameDuration).toBe(125);
+    expect(ase.tags[0]).toMatchObject({ from: 0, to: 2 });
+
+    // Layered editor document is preserved when it matches the pixels
+    const { encodePng } = await import('../src/lib/images.js');
+    const { createImage, setPixel } = await import('@sprixy/core');
+    const bg = createImage(4, 4); setPixel(bg, 0, 0, [255, 0, 0, 255]);
+    const fg = createImage(4, 4); setPixel(fg, 3, 3, [0, 0, 255, 255]);
+    const flat = createImage(4, 4); setPixel(flat, 0, 0, [255, 0, 0, 255]); setPixel(flat, 3, 3, [0, 0, 255, 255]);
+    const rle = (d: Uint8ClampedArray) => {
+      const out: number[] = [];
+      for (let i = 0; i < d.length; i += 4) out.push(1, 0, d[i], d[i + 1], d[i + 2], d[i + 3]);
+      return Buffer.from(out).toString('base64');
+    };
+    const blank = (await call('POST', '/api/v1/assets/blank', { projectId, width: 4, height: 4, name: 'layered' })).json();
+    await call('PUT', `/api/v1/assets/${blank.id}/image`, {
+      image: `data:image/png;base64,${(await encodePng(flat)).toString('base64')}`,
+      document: { format: 'sprixy-editor', version: 1, width: 4, height: 4,
+        layers: [{ id: 'a', name: 'Background', visible: true, opacity: 1 }, { id: 'b', name: 'Details', visible: true, opacity: 1 }],
+        frames: [{ id: 'f', duration: 100, cels: { a: rle(bg.data), b: rle(fg.data) } }] },
+    });
+    const layered = new Aseprite((await call('GET', `/api/v1/assets/${blank.id}/export?format=aseprite`)).rawPayload, 'l.aseprite');
+    layered.parse();
+    expect(layered.layers.map((l) => l.name)).toEqual(['Background', 'Details']);
+    expect(layered.frames[0].cels).toHaveLength(2);
+  });
+
   it('enforces BYOK: jobs fail fast without a provider key, estimates work', async () => {
     const spec = { task: 'generate', projectId, kind: 'character', prompt: 'a tiny wizard', count: 2 };
     const est = await call('POST', '/api/v1/generations/estimate', spec);

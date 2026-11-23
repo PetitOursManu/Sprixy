@@ -62,7 +62,22 @@ if (job.status === 'succeeded') {
 | `directions` | `assetId` | `directions` 4\|8, `baseDirection` south\|east, `modelId`, `lockPalette` |
 | `animate` | `assetId`, `action` | `method` video\|sheet, `frames` 2–24, `fps`, `modelId`, `resolution`, `lockPalette` |
 | `removeBg` | `assetId` | `modelId` |
+| `inpaint` | `assetId`, `prompt`, `rect` `{x,y,w,h}` | `image` (PNG data URI of unsaved pixels), `modelId`, `lockPalette`, `seed` — pixels outside `rect` are never modified |
 | `train` | `name`, `datasetId` | `modelId` (trainer), `steps`, `learningRate`, `triggerWord`, `trainingType`, `projectId` |
+
+## Webhooks
+
+Add `"webhookUrl": "https://…"` to `POST /api/v1/generations` to be called when the job finishes instead of polling.
+Sprixy POSTs `{ "event": "generation.finished", "data": <generation> }` with headers `X-Sprixy-Event`,
+`X-Sprixy-Timestamp` and `X-Sprixy-Signature: sha256=<hex>` where the signature is
+`HMAC_SHA256(secret, timestamp + "." + rawBody)`. Get (or rotate) your secret with `GET /api/v1/webhooks/secret`.
+Delivery is retried 4 times with backoff; the outcome is stored on the generation.
+
+```js
+// Node verification example
+const expected = crypto.createHmac('sha256', SECRET).update(`${req.headers['x-sprixy-timestamp']}.${rawBody}`).digest('hex');
+const ok = req.headers['x-sprixy-signature'] === `sha256=${expected}`;
+```
 
 ## Free endpoints (no AI call)
 
@@ -74,6 +89,8 @@ if (job.status === 'succeeded') {
 | `POST /api/v1/assets/:id/process` | Pipeline on an asset: `preview`, `replace`, or `new` (variant). |
 | `POST /api/v1/assets/:id/slice` | Spritesheet slicing (grid / auto) + frame alignment. |
 | `POST /api/v1/animations` | Build an animation from several assets. |
+| `POST /api/v1/tilesets/wang` | 16-tile Wang corner autotile set from two texture assets (`lowerAssetId`, `upperAssetId`, `tileSize`, `seed`, `roughness`, `edge`; `preview: true` returns a data URI). |
+| `GET /api/v1/datasets/:id/export` | Dataset ZIP for external LoRA training (images + captions + metadata.jsonl). |
 | `POST /api/v1/assets/batch` | Batch tag / favorite / move / collection / delete / process. |
 | `GET /api/v1/meta` | Processing ops with parameters, palette presets, kinds, export formats. |
 
@@ -91,7 +108,7 @@ Pipeline steps are `{ "op": "...", ...params }`, e.g.
 
 ## Export formats (`GET /api/v1/assets/:id/export?format=…&scale=…`)
 
-`png`, `gif`, `webp`, `json` (atlas), `spritesheet` (zip: PNG + JSON atlas), `zip` (everything + frames),
+`png`, `gif`, `webp`, `aseprite` (layers kept when edited in Sprixy), `json` (atlas), `spritesheet` (zip: PNG + JSON atlas), `zip` (everything + frames),
 `godot` (PNG + `.import` + SpriteFrames or TileSet `.tres`), `unity` (PNG + `.meta` with sprite rects, Point filter),
 `phaser` (PNG + atlas JSON + animations JSON + loader snippet). `POST /api/v1/exports` exports many assets at once.
 

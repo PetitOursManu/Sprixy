@@ -47,11 +47,13 @@ directly to disk (`outputDir`); set `SPRIXY_MCP_ALLOW_WRITE=false` to disable th
 | `sprixy_generate_directions` | paid | 4/8-direction character views + sheet |
 | `sprixy_animate_asset` | paid | Animation via video model or sprite-sheet method |
 | `sprixy_remove_background_ai` | paid | BiRefNet cutout |
+| `sprixy_edit_region` | paid | Repaint a rectangle (inpainting), palette-locked |
 | `sprixy_get_generation` / `sprixy_list_generations` / `sprixy_cancel_generation` | free | Job tracking |
 | `sprixy_search_assets` / `sprixy_get_asset` / `sprixy_update_asset` | free | Library |
 | `sprixy_import_image` | free | Import + optional pixel-art conversion |
 | `sprixy_process_asset` | free | Deterministic processing pipeline |
 | `sprixy_slice_spritesheet` | free | Slice & align frames |
+| `sprixy_build_autotile` | free | 16-tile Wang terrain set from two textures |
 | `sprixy_export_asset` | free | PNG / GIF / WebP / spritesheet / ZIP / Godot / Unity / Phaser |
 
 Paid tools run on the user’s own provider keys and respect the budgets configured in Sprixy (a job that would exceed

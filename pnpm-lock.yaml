@@ -230,6 +230,9 @@ importers:
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
+      ase-parser:
+        specifier: ^0.0.19
+        version: 0.0.19
       tsup:
         specifier: ^9.0.0
         version: 9.0.0(postcss@8.5.33)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
@@ -1228,6 +1231,9 @@ packages:
 
   any-promise@1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
+
+  ase-parser@0.0.19:
+    resolution: {integrity: sha512-OmJaASGijj/I9Ks0wz8PtpToF3r0LZhSEQc2H1RfowzjIoaVtLsCAGiSdkfjMPo1/p4VyiusIpDJWL6WTqYr6w==}
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -2878,6 +2884,8 @@ snapshots:
       require-from-string: 2.0.2
 
   any-promise@1.3.0: {}
+
+  ase-parser@0.0.19: {}
 
   assertion-error@2.0.1: {}
 

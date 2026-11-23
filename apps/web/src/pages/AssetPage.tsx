@@ -59,7 +59,7 @@ export function AssetPage() {
         <button className="btn danger icon" title="Delete" onClick={() => confirm('Delete this asset? This cannot be undone.') && remove.mutate()}><Icon name="trash" /></button>
       </div>
       <div className="page">
-        <div className="split" style={{ gridTemplateColumns: 'minmax(0,1fr) 400px' }}>
+        <div className="split asset">
           <div className="col" style={{ gap: 12 }}>
             <div className="row between wrap">
               <div className="row">
