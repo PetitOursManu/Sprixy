@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, download, fmtUsd, get, patch, post, qs, timeAgo, type Asset, type AssetDetail, type Estimate, type Generation } from '../api';
 import { useDebounced, useProject } from '../hooks';
@@ -19,7 +19,8 @@ export function AssetPage() {
   const q = useQuery({ queryKey: ['asset', id], queryFn: () => get<AssetDetail>(`/api/v1/assets/${id}`) });
   const a = q.data;
   const project = useProject(a?.projectId);
-  const [tab, setTab] = useState<Tab>('info');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(() => (['info', 'ai', 'process', 'slice', 'export'].includes(params.get('tab') ?? '') ? (params.get('tab') as Tab) : 'info'));
   const [zoom, setZoom] = useState<number | 'fit'>('fit');
   const [view, setView] = useState<'image' | 'anim' | 'source'>('image');
   const [bg, setBg] = useState<'checker' | 'dark' | 'light'>('checker');
@@ -43,60 +44,82 @@ export function AssetPage() {
   const maxSide = Math.max(a.width, a.height);
   const fitZoom = Math.max(1, Math.min(24, Math.floor(480 / (a.frames?.length && view === 'anim' ? Math.max(...a.frames.map((f) => Math.max(f.rect.w, f.rect.h))) : maxSide))));
   const z = zoom === 'fit' ? fitZoom : zoom;
-  const stageBg = bg === 'checker' ? undefined : bg === 'dark' ? '#0b0c0e' : '#e8e6e0';
+  const stageBg = bg === 'checker' ? undefined : bg === 'dark' ? '#12303a' : '#ffffff';
 
   return (
     <>
-      <div className="topbar">
+      <div className="phead" style={{ paddingBottom: 18, borderBottom: '1px solid var(--line)', background: 'rgba(255,255,255,0.6)' }}>
         <div className="crumbs">
+          <Link to="/">Projects</Link><Icon name="chevron" size={12} />
           <Link to={`/projects/${a.projectId}`}>{project.data?.name ?? 'Project'}</Link>
-          {a.parent && <><span>/</span><Link to={`/assets/${a.parent.id}`}>{a.parent.name}</Link></>}
-          <span>/</span><strong>{a.name}</strong>
+          {a.parent && <><Icon name="chevron" size={12} /><Link to={`/assets/${a.parent.id}`}>{a.parent.name}</Link></>}
+          <Icon name="chevron" size={12} /><strong>{a.name}</strong>
         </div>
-        <div className="grow" />
-        <button className={`btn ${a.favorite ? 'on' : ''}`} onClick={() => update.mutate({ favorite: !a.favorite })}><Icon name="star" /> {a.favorite ? 'Favorite' : 'Add to favorites'}</button>
-        <Link className="btn" to={`/assets/${a.id}/edit`}><Icon name="edit" /> Edit pixels</Link>
-        <button className="btn danger icon" title="Delete" onClick={() => confirm('Delete this asset? This cannot be undone.') && remove.mutate()}><Icon name="trash" /></button>
+        <div className="phead-row" style={{ alignItems: 'center' }}>
+          <div className="row" style={{ gap: 14 }}>
+            <Link className="btn icon" to={`/projects/${a.projectId}`} title="Back to the library" aria-label="Back"><Icon name="back" /></Link>
+            <div>
+              <div className="row" style={{ gap: 8 }}>
+                <h1 style={{ fontSize: 24 }}>{a.name}</h1>
+                <button className="btn ghost sm icon" style={{ color: a.favorite ? 'var(--accent)' : 'var(--dim)' }} title={a.favorite ? 'Remove from favourites' : 'Add to favourites'} onClick={() => update.mutate({ favorite: !a.favorite })}><Icon name="star" size={17} /></button>
+              </div>
+              <div className="small muted"><span style={{ textTransform: 'capitalize' }}>{a.kind}</span> · {a.width} × {a.height} px{project.data?.artDirection.palette.presetId ? ` · ${project.data.artDirection.palette.presetId}` : ''} · {project.data?.name}</div>
+            </div>
+          </div>
+          <div className="row">
+            <Link className="btn" to={`/assets/${a.id}/edit`}><Icon name="edit" /> Edit pixels</Link>
+            <button className="btn" onClick={() => setTab('export')}><Icon name="download" /> Export</button>
+            <button className="btn danger icon" title="Delete" aria-label="Delete" onClick={() => confirm('Delete this asset? This cannot be undone.') && remove.mutate()}><Icon name="trash" /></button>
+          </div>
+        </div>
       </div>
       <div className="page">
         <div className="split asset">
-          <div className="col" style={{ gap: 12 }}>
-            <div className="row between wrap">
-              <div className="row">
-                {a.frames && a.frames.length > 1 && <Segmented value={view} onChange={setView} options={[{ value: 'anim', label: 'Animation' }, { value: 'image', label: 'Sheet' }, ...(a.hasSource ? [{ value: 'source' as const, label: 'AI source' }] : [])]} />}
-                {!(a.frames && a.frames.length > 1) && a.hasSource && <Segmented value={view} onChange={setView} options={[{ value: 'image', label: 'Pixel art' }, { value: 'source', label: 'AI source' }]} />}
-                {preview && <span className="chip accent">preview <button onClick={() => setPreview(null)}>×</button></span>}
+          <div className="col" style={{ gap: 18 }}>
+            <section className="panel">
+              <div className="row between wrap" style={{ padding: '12px 16px', borderBottom: '1px solid var(--line)' }}>
+                <div className="row">
+                  {a.frames && a.frames.length > 1 && <Segmented value={view} onChange={setView} options={[{ value: 'anim', label: 'Animation' }, { value: 'image', label: 'Sheet' }, ...(a.hasSource ? [{ value: 'source' as const, label: 'AI source' }] : [])]} />}
+                  {!(a.frames && a.frames.length > 1) && a.hasSource && <Segmented value={view} onChange={setView} options={[{ value: 'image', label: 'Pixel art' }, { value: 'source', label: 'AI source' }]} />}
+                  {preview && <span className="chip accent">preview <button onClick={() => setPreview(null)}>×</button></span>}
+                </div>
+                <div className="row">
+                  <Segmented value={bg} onChange={setBg} options={[{ value: 'checker', label: '▦' }, { value: 'dark', label: '■' }, { value: 'light', label: '□' }]} />
+                  <select className="select" style={{ width: 96, height: 30 }} value={String(zoom)} onChange={(e) => setZoom(e.target.value === 'fit' ? 'fit' : Number(e.target.value))} aria-label="Zoom">
+                    <option value="fit">Fit ({fitZoom}×)</option>
+                    {[1, 2, 3, 4, 6, 8, 12, 16, 24].map((n) => <option key={n} value={n}>{n}×</option>)}
+                  </select>
+                </div>
               </div>
-              <div className="row">
-                <Segmented value={bg} onChange={setBg} options={[{ value: 'checker', label: '▦' }, { value: 'dark', label: '■' }, { value: 'light', label: '□' }]} />
-                <select className="select" style={{ width: 90, height: 28 }} value={String(zoom)} onChange={(e) => setZoom(e.target.value === 'fit' ? 'fit' : Number(e.target.value))}>
-                  <option value="fit">Fit ({fitZoom}×)</option>
-                  {[1, 2, 3, 4, 6, 8, 12, 16, 24].map((n) => <option key={n} value={n}>{n}×</option>)}
-                </select>
+              <div className="stage" style={{ minHeight: 480, background: stageBg, border: 'none', borderRadius: 0 }}>
+                {preview ? (
+                  <img src={preview} alt="preview" style={{ width: 'auto', imageRendering: 'pixelated', transform: `scale(${z})`, transformOrigin: 'center' }} />
+                ) : view === 'anim' && a.frames ? (
+                  <AnimationPlayer src={a.fileUrl} frames={a.frames} fps={typeof a.meta.fps === 'number' ? a.meta.fps : 10} zoom={z} />
+                ) : view === 'source' && a.sourceUrl ? (
+                  <img src={a.sourceUrl} alt="AI source" style={{ maxWidth: '100%', maxHeight: 640 }} />
+                ) : (
+                  <img src={a.fileUrl} alt={a.name} width={a.width * z} height={a.height * z} style={{ imageRendering: 'pixelated' }} />
+                )}
+                <span className="mono small" style={{ position: 'absolute', left: 12, top: 12, background: 'rgba(255,255,255,0.92)', border: '1px solid var(--line)', borderRadius: 6, padding: '2px 8px', color: 'var(--muted)' }}>{a.width} × {a.height} PX</span>
               </div>
-            </div>
-            <div className="stage" style={{ minHeight: 520, background: stageBg }}>
-              {preview ? (
-                <img src={preview} alt="preview" style={{ width: 'auto', imageRendering: 'pixelated', transform: `scale(${z})`, transformOrigin: 'center' }} />
-              ) : view === 'anim' && a.frames ? (
-                <AnimationPlayer src={a.fileUrl} frames={a.frames} fps={typeof a.meta.fps === 'number' ? a.meta.fps : 10} zoom={z} />
-              ) : view === 'source' && a.sourceUrl ? (
-                <img src={a.sourceUrl} alt="AI source" style={{ maxWidth: '100%', maxHeight: 640 }} />
-              ) : (
-                <img src={a.fileUrl} alt={a.name} width={a.width * z} height={a.height * z} style={{ imageRendering: 'pixelated' }} />
-              )}
-            </div>
+              <div className="row between small muted" style={{ padding: '10px 16px', borderTop: '1px solid var(--line)', fontFamily: 'var(--mono)', fontSize: 11 }}>
+                <span>CANVAS {a.width} × {a.height}{a.frames && a.frames.length > 1 ? ` · ${a.frames.length} FRAMES` : ''}</span><span>NEAREST NEIGHBOUR · {z}×</span>
+              </div>
+            </section>
             <Variants a={a} />
           </div>
 
-          <aside className="col sticky" style={{ gap: 12 }}>
-            <div className="segmented" style={{ alignSelf: 'stretch', display: 'flex' }}>
+          <aside className="panel sticky" style={{ overflow: 'visible' }}>
+            <div className="panel-head" style={{ borderBottom: 'none', paddingBottom: 6 }}><div><h2>Asset inspector</h2><div className="sub">{a.name}</div></div></div>
+            <nav className="tabs" style={{ margin: '0 0 0', padding: '0 20px', gap: 18 }} role="tablist">
               {(['info', 'ai', 'process', 'slice', 'export'] as Tab[]).map((t) => (
-                <button key={t} className={tab === t ? 'on' : ''} style={{ flex: 1, textAlign: 'center' }} onClick={() => setTab(t)}>
+                <a key={t} href="#" role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={(e) => { e.preventDefault(); setTab(t); }}>
                   {{ info: 'Info', ai: 'AI', process: 'Process', slice: 'Slice', export: 'Export' }[t]}
-                </button>
+                </a>
               ))}
-            </div>
+            </nav>
+            <div className="asset-tabs">
             {tab === 'info' && <InfoPanel a={a} onSave={(b) => update.mutate(b)} />}
             {tab === 'ai' && <AiPanel a={a} />}
             {tab === 'process' && <ProcessPanel a={a} palette={project.data?.effectivePalette ?? []} onPreview={setPreview} />}
@@ -107,6 +130,7 @@ export function AssetPage() {
                 <p className="small muted">Game-engine packages include ready-to-use resources: Godot SpriteFrames/TileSet, Unity .meta with Point filtering and slicing, Phaser atlas + animations.</p>
               </div></div>
             )}
+            </div>
           </aside>
         </div>
       </div>
@@ -119,11 +143,13 @@ function Variants({ a }: { a: AssetDetail }) {
   if (list.length <= 1) return null;
   return (
     <div className="panel">
-      <div className="panel-head"><h3>Variants & derived assets</h3><span className="mono small muted">{a.variants.length}</span></div>
-      <div className="panel-body" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      <div className="panel-head"><div className="row" style={{ gap: 8 }}><h2>Variants & derived assets</h2><span className="chip">{a.variants.length}</span></div></div>
+      <div className="panel-body" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {list.map((v) => (
-          <Link key={v.id} to={`/assets/${v.id}`} title={v.name} className="checker" style={{ width: 72, height: 72, display: 'grid', placeItems: 'center', borderRadius: 4, border: `1px solid ${v.id === a.id ? 'var(--accent)' : 'var(--line)'}` }}>
-            <img className="px" src={v.fileUrl} alt={v.name} style={{ maxWidth: '88%', maxHeight: '88%' }} />
+          <Link key={v.id} to={`/assets/${v.id}`} title={v.name} style={{ width: 112, border: `1px solid ${v.id === a.id ? 'var(--accent)' : 'var(--line)'}`, boxShadow: v.id === a.id ? '0 0 0 1px var(--accent)' : undefined, borderRadius: 10, overflow: 'hidden', color: 'var(--text)', textDecoration: 'none', background: '#fff' }}>
+            <div className="checker" style={{ height: 70, display: 'grid', placeItems: 'center' }}><img className="px" src={v.fileUrl} alt="" style={{ maxWidth: '84%', maxHeight: '84%' }} /></div>
+            <div style={{ padding: '6px 8px', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{v.id === a.id ? 'This asset' : v.name}</div>
+            <div className="mono" style={{ padding: '0 8px 6px', fontSize: 10, color: 'var(--muted)' }}>{v.frames && v.frames.length > 1 ? `${v.frames.length} frames` : `${v.width}×${v.height}`}</div>
           </Link>
         ))}
       </div>

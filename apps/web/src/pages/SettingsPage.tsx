@@ -18,6 +18,7 @@ export function SettingsPage() {
     <>
       <div className="topbar"><div className="crumbs"><strong>Settings</strong></div></div>
       <div className="page">
+        <div className="page-head"><div><h1>Settings<span style={{ color: 'var(--accent)' }}>.</span></h1><p>Your keys, your tokens, your control.</p></div><span className="chip"><Icon name="lock" size={12} /> Self-hosted & private</span></div>
         <ProviderKeys />
         <ApiTokens />
         <Integrations />

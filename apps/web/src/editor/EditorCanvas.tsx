@@ -27,8 +27,8 @@ export function EditorCanvas({ store }: { store: EditorStore }) {
     const tile = document.createElement('canvas');
     tile.width = tile.height = 16;
     const tctx = tile.getContext('2d')!;
-    tctx.fillStyle = '#1d2024'; tctx.fillRect(0, 0, 16, 16);
-    tctx.fillStyle = '#272a30'; tctx.fillRect(0, 0, 8, 8); tctx.fillRect(8, 8, 8, 8);
+    tctx.fillStyle = '#ffffff'; tctx.fillRect(0, 0, 16, 16);
+    tctx.fillStyle = '#e9f1f1'; tctx.fillRect(0, 0, 8, 8); tctx.fillRect(8, 8, 8, 8);
     const pattern = ctx.createPattern(tile, 'repeat')!;
     let raf = 0;
     let ants = 0;
@@ -56,7 +56,7 @@ export function EditorCanvas({ store }: { store: EditorStore }) {
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#0b0c0e';
+      ctx.fillStyle = '#edf4f4';
       ctx.fillRect(0, 0, cw, ch);
       const { width, height, frames } = store.doc;
       const z = store.zoom, ox = store.ox, oy = store.oy;
@@ -80,16 +80,16 @@ export function EditorCanvas({ store }: { store: EditorStore }) {
         ctx.beginPath();
         for (let x = 1; x < width; x++) { ctx.moveTo(ox + x * z + 0.5, oy); ctx.lineTo(ox + x * z + 0.5, oy + H); }
         for (let y = 1; y < height; y++) { ctx.moveTo(ox, oy + y * z + 0.5); ctx.lineTo(ox + W, oy + y * z + 0.5); }
-        ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+        ctx.strokeStyle = 'rgba(18,48,58,0.12)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
       // canvas border
-      ctx.strokeStyle = '#30343b';
+      ctx.strokeStyle = '#cbdede';
       ctx.strokeRect(ox - 0.5, oy - 0.5, W + 1, H + 1);
       // mirror axis
       if (store.mirrorX) {
-        ctx.strokeStyle = 'rgba(90,209,230,0.6)';
+        ctx.strokeStyle = 'rgba(42,167,171,0.75)';
         ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(ox + W / 2 + 0.5, oy);
@@ -117,10 +117,10 @@ export function EditorCanvas({ store }: { store: EditorStore }) {
       if (hv && ['pencil', 'eraser', 'line', 'rect'].includes(store.tool) && st.current.mode !== 'pan') {
         const size = store.brush;
         const o = Math.floor((size - 1) / 2);
-        ctx.strokeStyle = store.tool === 'eraser' ? 'rgba(255,107,107,0.9)' : 'rgba(255,181,71,0.9)';
+        ctx.strokeStyle = store.tool === 'eraser' ? 'rgba(214,69,61,0.95)' : 'rgba(255,122,24,0.95)';
         ctx.strokeRect(ox + (hv.x - o) * z + 0.5, oy + (hv.y - o) * z + 0.5, size * z - 1, size * z - 1);
       } else if (hv && store.tool !== 'select' && hv.x >= 0 && hv.y >= 0 && hv.x < width && hv.y < height) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.strokeStyle = 'rgba(18,48,58,0.55)';
         ctx.strokeRect(ox + hv.x * z + 0.5, oy + hv.y * z + 0.5, z - 1, z - 1);
       }
     };

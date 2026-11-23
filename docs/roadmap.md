@@ -23,7 +23,7 @@ slicing, animation builder, exports (PNG, GIF, WebP, spritesheet + JSON, ZIP, Go
 `@sprixy/client`, official MCP server (remote `/mcp` + stdio CLI), integration docs for Mocky / Muse / any client.
 
 ## Phase 5 — Web app & editor ✅
-Dark workbench UI, generation with live estimates, art-direction editor (palette extraction, .hex/.gpl import),
+Studio UI (light theme from the Mocky redesign: navy rail, white cards on a pixel grid, orange accents, official logo), generation with live estimates, art-direction editor (palette extraction, .hex/.gpl import),
 asset detail with animation player, layered pixel editor with frames & onion skin, LoRAs & datasets, usage & budgets,
 settings.
 

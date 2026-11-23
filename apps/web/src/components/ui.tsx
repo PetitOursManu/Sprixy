@@ -34,24 +34,20 @@ const P: Record<string, string> = {
   refresh: 'M13.5 3v3.5H10M2.5 13V9.5H6M3.3 6a5 5 0 0 1 9.4-.8M12.7 10a5 5 0 0 1-9.4.8',
   sliders: 'M2 4h7M12 4h2M2 12h2M7 12h7M10.5 2.5v3M5.5 10.5v3',
   link: 'M6.5 9.5l3-3M5 7.5L3.5 9a2.5 2.5 0 0 0 3.5 3.5L8.5 11M11 8.5L12.5 7A2.5 2.5 0 0 0 9 3.5L7.5 5',
+  chevron: 'M6 3.5l4.5 4.5L6 12.5',
+  back: 'M10 3.5L5.5 8l4.5 4.5',
+  search: 'M7 2.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zM10.5 10.5l3 3',
+  list: 'M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01',
+  lock: 'M4 7.5h8v6.5H4zM5.5 7.5V5a2.5 2.5 0 0 1 5 0v2.5',
+  bolt: 'M9 1.5L3.5 9H8l-1 5.5L12.5 7H8z',
+  image: 'M2 2.5h12v11H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 5.5h.01',
+  users: 'M6 7a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 14c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4M11 2.2a2.5 2.5 0 0 1 0 4.6M12.5 10c1.3.5 2 1.8 2 4',
 };
 
 export function Icon({ name, size = 16, className }: { name: keyof typeof P | string; size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="square" strokeLinejoin="miter" className={className} aria-hidden>
       <path d={P[name] ?? P.cube} />
-    </svg>
-  );
-}
-
-/** Sprixy logo — an 8x8 pixel "S" sprite. */
-export function Logo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 8 8" shapeRendering="crispEdges" aria-label="Sprixy">
-      <rect width="8" height="8" fill="#17191d" />
-      <path fill="#ffb547" d="M2 1h4v1H2zM1 2h1v2H1zM2 4h4v1H2zM6 5h1v2H6zM2 7h4v1H2z" />
-      <path fill="#5ad1e6" d="M5 2h1v1H5z" />
-      <path fill="#e9e6df" d="M1 6h1v1H1z" />
     </svg>
   );
 }

@@ -106,12 +106,16 @@ export function GeneratePage() {
 
   return (
     <div className="page">
-      <div className="split">
-        <div className="col" style={{ gap: 16 }}>
-          <div className="panel">
-            <div className="panel-head"><h2>What to generate</h2><span className="small muted mono">native {width ?? defaultSize.width}×{height ?? defaultSize.height}px</span></div>
-            <div className="panel-body">
-              <div className="kind-pick">
+      <div className="page-head">
+        <div><h2 style={{ fontSize: 21 }}>Generate assets</h2><p>Bring an idea to life, pixel by pixel.</p></div>
+        <span className="row small muted"><span className="led" style={{ background: 'var(--accent)' }} /> Project art direction is active · native {width ?? defaultSize.width}×{height ?? defaultSize.height}px</span>
+      </div>
+      <div className="split left">
+        <section className="panel" style={{ alignSelf: 'start' }}>
+          <div className="panel-head"><div><h2>Generation settings</h2><div className="sub">Set up your next batch</div></div><span className="tag">01 / INPUT</span></div>
+          <div className="panel-body" style={{ gap: 18 }}>
+              <span className="label">Asset kind</span>
+              <div className="kind-pick" style={{ marginTop: -10 }}>
                 {KINDS.map((k) => (
                   <button key={k.kind} className={kind === k.kind ? 'on' : ''} onClick={() => setKind(k.kind)}>
                     <Icon name={k.icon} /> {k.label}
@@ -133,12 +137,7 @@ export function GeneratePage() {
                 <Field label="Width"><input className="input mono" type="number" min={4} max={1024} value={width ?? defaultSize.width} onChange={(e) => setWidth(Number(e.target.value) || undefined)} /></Field>
                 <Field label="Height"><input className="input mono" type="number" min={4} max={1024} value={height ?? defaultSize.height} onChange={(e) => setHeight(Number(e.target.value) || undefined)} /></Field>
               </div>
-            </div>
-          </div>
-
-          <div className="panel">
-            <div className="panel-head"><h2>Model & style</h2></div>
-            <div className="panel-body">
+              <div className="sep" />
               <Field label="Model"><ModelPicker capability="txt2img" alsoCapability="edit" value={modelId} onChange={setModelId} /></Field>
               <Field label={`LoRAs ${effectiveModel?.loraFamily ? `· compatible family: ${effectiveModel.loraFamily}` : '· this model does not support LoRAs'}`}>
                 <div className="col" style={{ gap: 6 }}>
@@ -174,13 +173,9 @@ export function GeneratePage() {
                 </div>
               </Field>
               <Field label="Seed"><input className="input mono" style={{ width: 160 }} value={seed} onChange={(e) => setSeed(e.target.value.replace(/\D/g, ''))} placeholder="random" /></Field>
-            </div>
-          </div>
-
-          <div className="panel">
-            <div className="panel-head"><h2>Pixel-perfect post-processing</h2><span className="chip green">free · deterministic</span></div>
-            <div className="panel-body">
-              <div className="grid-2">
+              <div className="sep" />
+              <div className="row between"><span className="label">Post-processing</span><span className="chip green">FREE · deterministic</span></div>
+              <div className="grid-2" style={{ marginTop: -6 }}>
                 {TRANSPARENT[kind] && (
                   <Field label="Background removal">
                     <Segmented value={bg} onChange={setBg} options={[{ value: 'flood', label: 'Flood (free)' }, { value: 'ai', label: 'BiRefNet (AI)' }, { value: 'none', label: 'Keep' }]} />
@@ -201,40 +196,38 @@ export function GeneratePage() {
                 <label className="check"><input type="checkbox" checked={pixelize} onChange={(e) => setPixelize(e.target.checked)} /> Snap to a true pixel grid at native size</label>
                 {TRANSPARENT[kind] && <label className="check"><input type="checkbox" checked={outline} onChange={(e) => setOutline(e.target.checked)} /> Re-draw 1px outline</label>}
               </div>
-            </div>
-          </div>
-        </div>
-
-        <aside className="col sticky" style={{ gap: 12 }}>
-          <div className="panel">
-            <div className="panel-body">
-              <div className="row between">
-                <div className="stat">
-                  <span className="k">Estimated cost</span>
-                  <span className="v cost">{estimate.isFetching && !est ? '…' : est ? (est.estimate.usd === null ? 'after run' : fmtUsd(est.estimate.usd)) : '—'}</span>
-                </div>
-                {est && <span className={`chip ${est.estimate.source === 'live' ? 'green' : ''}`}>{est.estimate.source === 'live' ? 'live price' : est.estimate.source === 'catalog' ? 'list price' : 'reported after'}</span>}
-              </div>
-              {est && <div className="small muted">{est.estimate.breakdown}</div>}
               {estimate.error && <div className="notice error small">{(estimate.error as Error).message}</div>}
               {est?.warnings.map((w) => <div key={w} className="notice warn small">{w}</div>)}
               {effectiveModel && !effectiveModel.available && (
                 <div className="notice warn small">No {effectiveModel.provider} key configured. <Link to="/settings">Add your key</Link> — Sprixy is BYOK.</div>
               )}
-              <button className="btn primary lg" disabled={!prompt.trim() || run.isPending} onClick={() => run.mutate()}>
-                <Icon name="wand" /> Generate {count > 1 ? `${count} images` : ''}
-              </button>
-              <span className="small muted">Ctrl/⌘ + Enter</span>
-              {est && (
-                <button className="btn ghost sm" style={{ alignSelf: 'flex-start' }} onClick={() => setShowPrompt(!showPrompt)}>{showPrompt ? 'Hide' : 'Show'} final prompt</button>
-              )}
-              {showPrompt && est && <div className="code-block" style={{ whiteSpace: 'pre-wrap' }}>{est.finalPrompt}</div>}
-            </div>
           </div>
-          <div className="row between"><span className="label">Recent jobs</span><Link to={`/projects/${projectId}/history`} className="small">All →</Link></div>
-          {jobs.data?.items.length === 0 && <div className="small muted">No job yet.</div>}
-          {jobs.data?.items.slice(0, 6).map((g) => <JobCard key={g.id} g={g} compact />)}
-        </aside>
+          <div className="panel-foot" style={{ padding: '16px 20px' }}>
+            <div className="grow">
+              <div style={{ fontWeight: 700 }}>Est. <span className="cost">{estimate.isFetching && !est ? '…' : est ? (est.estimate.usd === null ? 'after run' : fmtUsd(est.estimate.usd)) : '—'}</span>
+                {est && <span className={`chip ${est.estimate.source === 'live' ? 'green' : ''}`} style={{ marginLeft: 8 }}>{est.estimate.source === 'live' ? 'live price' : est.estimate.source === 'catalog' ? 'list price' : 'reported after'}</span>}</div>
+              <div className="small muted">{est ? est.estimate.breakdown : 'Ctrl/⌘ + Enter to generate'}</div>
+            </div>
+            <button className="btn primary lg" disabled={!prompt.trim() || run.isPending} onClick={() => run.mutate()}>
+              <Icon name="bolt" /> Generate ×{count}
+            </button>
+          </div>
+        </section>
+
+        <section className="panel sticky" style={{ alignSelf: 'start' }}>
+          <div className="panel-head"><div><h2>Results</h2><div className="sub">Your latest generations</div></div><span className="tag">02 / OUTPUT</span></div>
+          <div className="panel-body">
+            {jobs.data?.items.length === 0 && <div className="empty" style={{ padding: 30 }}><h3>No generation yet</h3><span className="small">Describe a subject on the left and press Generate.</span></div>}
+            {jobs.data?.items.slice(0, 6).map((g) => <JobCard key={g.id} g={g} compact />)}
+            {est && (
+              <details open={showPrompt} onToggle={(e) => setShowPrompt((e.target as HTMLDetailsElement).open)} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '10px 14px' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 12.5 }}>Full prompt sent to the model</summary>
+                <div className="small" style={{ color: 'var(--text-2)', marginTop: 8, lineHeight: 1.6 }}>{est.finalPrompt}</div>
+              </details>
+            )}
+            <Link to={`/projects/${projectId}/history`} className="small" style={{ alignSelf: 'flex-end', fontWeight: 700 }}>All jobs →</Link>
+          </div>
+        </section>
       </div>
       {picking && <AssetPicker projectId={projectId!} initial={activeRefs} onClose={() => setPicking(false)} onPick={setRefs} />}
     </div>

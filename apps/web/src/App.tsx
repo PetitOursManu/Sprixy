@@ -1,8 +1,9 @@
 import { lazy, Suspense, useState, type ReactNode } from 'react';
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
-import { Icon, Logo, Spinner, StatusLed } from './components/ui';
-import { useActiveJobs, useProjects } from './hooks';
+import { Icon, Spinner, StatusLed } from './components/ui';
+import { useActiveJobs, useProjects, useUsageSummary } from './hooks';
+import { fmtUsd } from './api';
 import { AuthPage } from './pages/AuthPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectLayout } from './pages/ProjectLayout';
@@ -22,44 +23,61 @@ function Shell({ children }: { children: ReactNode }) {
   const { status, logout } = useAuth();
   const projects = useProjects();
   const jobs = useActiveJobs();
+  const usage = useUsageSummary();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
   const active = jobs.data?.items ?? [];
+  const user = status?.user;
+  const initial = (user?.name || user?.email || '?').slice(0, 1).toUpperCase();
+  const month = usage.data?.month ?? 0;
+  const cap = usage.data?.budget.monthlyBudgetUsd ?? null;
+  const inProject = loc.pathname.startsWith('/projects/');
   return (
     <div className={`shell ${open ? 'nav-open' : ''}`} onClick={() => open && setOpen(false)}>
+      <header className="header">
+        <Link to="/" className="logo-link" aria-label="Sprixy — projects"><img src="/sprixy-logo.png" alt="Sprixy" /></Link>
+        <span className="tagline hide-mobile">Your game asset workbench</span>
+        <div className="grow" />
+        {active.length > 0 && <Link to="/jobs" className="pill" style={{ textDecoration: 'none' }}><StatusLed status="running" /> {active.length} job{active.length > 1 ? 's' : ''} running</Link>}
+        <span className="pill hide-mobile"><span className="led" style={{ background: 'var(--cyan)' }} /> Self-hosted</span>
+        <span className="avatar" title={user?.email}>{initial}</span>
+        <button className="btn ghost icon mobile-only" style={{ position: 'fixed', top: 11, right: 10, zIndex: 30 }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }} aria-label="Menu"><Icon name="menu" /></button>
+      </header>
       <aside className="sidebar">
-        <div className="brand">
-          <Logo />
-          <div>
-            <div className="brand-name">SPRIXY</div>
-            <div className="brand-tag">2D ASSET STUDIO</div>
-          </div>
-        </div>
-        <nav className="nav">
-          <NavLink to="/" end><Icon name="grid" /> Projects</NavLink>
-          <NavLink to="/jobs"><Icon name="history" /> Jobs {active.length > 0 && <span className="count"><StatusLed status="running" /> {active.length}</span>}</NavLink>
+        <nav className="nav" aria-label="Main">
+          <div className="nav-label">Workspace</div>
+          <NavLink to="/" end className={() => (loc.pathname === '/' || inProject ? 'active' : '')}><Icon name="grid" /> Projects <span className="count">{projects.data?.items.length ?? 0}</span></NavLink>
+          {(projects.data?.items.length ?? 0) > 0 && (
+            <div className="sub">
+              {projects.data!.items.slice(0, 12).map((p) => (
+                <NavLink key={p.id} to={`/projects/${p.id}`} className={() => (loc.pathname.startsWith(`/projects/${p.id}`) ? 'active' : '')}>
+                  <span className="dot" /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
+          <NavLink to="/jobs"><Icon name="history" /> Jobs {active.length > 0 && <span className="count">{active.length}</span>}</NavLink>
           <NavLink to="/loras"><Icon name="layers" /> LoRAs</NavLink>
           <NavLink to="/datasets"><Icon name="db" /> Datasets</NavLink>
+          <div className="nav-label">Account</div>
           <NavLink to="/usage"><Icon name="chart" /> Usage & budget</NavLink>
           <NavLink to="/settings"><Icon name="cog" /> Settings</NavLink>
-          <div className="nav-label">Projects</div>
-          {(projects.data?.items ?? []).slice(0, 12).map((p) => (
-            <NavLink key={p.id} to={`/projects/${p.id}`} className={() => (loc.pathname.startsWith(`/projects/${p.id}`) ? 'active' : '')}>
-              <Icon name="folder" /> <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-              <span className="count">{p.assetCount}</span>
-            </NavLink>
-          ))}
+          <a href="/api/docs" target="_blank" rel="noreferrer"><Icon name="book" /> API docs & MCP</a>
         </nav>
         <div className="sidebar-foot">
-          <a href="/api/docs" target="_blank" rel="noreferrer" className="row small muted"><Icon name="book" size={14} /> REST API docs</a>
-          <div className="row between">
-            <span className="small muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{status?.user?.name}</span>
-            <button className="btn ghost sm icon" onClick={() => void logout()} title="Sign out"><Icon name="logout" /></button>
+          <Link to="/usage" className="budget-card">
+            <div className="row between"><span>This month</span>{cap !== null && <span className="mono">{Math.round((month / cap) * 100)}%</span>}</div>
+            <div style={{ marginTop: 4 }}><strong>{fmtUsd(month, 2)}</strong>{cap !== null && <span> of {fmtUsd(cap, 0)}</span>}</div>
+            {cap !== null && <div className="bar"><i style={{ width: `${Math.min(100, (month / cap) * 100)}%` }} /></div>}
+          </Link>
+          <div className="user-row">
+            <span className="avatar">{initial}</span>
+            <span className="who">{user?.name || user?.email}<small>{user?.role}</small></span>
+            <button className="btn ghost sm icon" onClick={() => void logout()} title="Sign out" aria-label="Sign out"><Icon name="logout" /></button>
           </div>
         </div>
       </aside>
       <main className="main">
-        <button className="btn ghost icon mobile-only" style={{ position: 'fixed', top: 10, right: 10, zIndex: 30 }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }} aria-label="Menu"><Icon name="menu" /></button>
         {children}
       </main>
     </div>

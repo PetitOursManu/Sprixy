@@ -22,6 +22,16 @@ export function useProjects() {
   return useQuery({ queryKey: ['projects'], queryFn: () => get<{ items: Project[] }>('/api/v1/projects') });
 }
 
+export interface UsageSummary {
+  days: number; today: number; month: number; jobsToday: number;
+  budget: { monthlyBudgetUsd: number | null; dailyBudgetUsd: number | null; maxCostPerJobUsd: number | null; dailyJobLimit: number | null };
+}
+
+/** Month / day spend and budgets (shared with the Usage page cache). */
+export function useUsageSummary() {
+  return useQuery({ queryKey: ['usage', 30], queryFn: () => get<UsageSummary>('/api/v1/usage?days=30'), staleTime: 30_000 });
+}
+
 export function useLoras(projectId?: string) {
   return useQuery({ queryKey: ['loras', projectId ?? 'all'], queryFn: () => get<{ items: Lora[] }>(`/api/v1/loras${qs({ projectId })}`) });
 }
