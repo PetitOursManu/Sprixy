@@ -46,7 +46,7 @@ so a whole game keeps a coherent look.
 | **Export** | PNG (transparent), GIF, WebP (animated), spritesheet PNG + JSON atlas, metadata JSON, ZIP bundle, **Godot 4** (SpriteFrames / TileSet `.tres`), **Unity** (`.meta` with Point filtering + sprite slicing), **Phaser** (atlas + animations JSON + Tiled `.tsx`), **Aseprite** (`.aseprite` with layers and frames). Integer upscaling. |
 | **Costs** | BYOK keys encrypted server-side (AES-256-GCM). Live prices from fal’s pricing API, real cost from OpenRouter. Estimates before every job, per-day/provider/model usage, monthly & daily budgets, per-job cap, daily job limit (HTTP 402 when exceeded). |
 | **Team** | The admin creates accounts, gives each a monthly / daily spending allowance and can let them generate on the admin's provider keys — keys and provider balance stay hidden. Disable or delete accounts at any time. |
-| **Integrations** | Documented REST API (OpenAPI at `/api/docs`), API tokens, signed job webhooks, official **MCP server** (remote HTTP at `/mcp` or local stdio `@sprixy/mcp`), TypeScript client `@sprixy/client` — usable by Mocky, Muse or any software. |
+| **Integrations** | Documented REST API (OpenAPI at `/api/docs`), API tokens, signed job webhooks, official **MCP server** (remote HTTP at `/mcp` or local stdio `@sprixy/mcp`), TypeScript client `@sprixy/client` — usable by Mocky, Muse or any software. Read-only **catalog** of the projects you share with apps: Mocky uses your sprites in its designs, with crisp pixels. |
 
 ## Quick start (Docker)
 
@@ -93,7 +93,7 @@ instance serves it at **`/docs`** (the OpenAPI reference stays at `/api/docs`). 
 
 - [Getting started](apps/docs/docs/en/getting-started.md) · [User guide](apps/docs/docs/en/guide.md)
 - [Deploy (Coolify, Docker)](apps/docs/docs/en/deployment.md) · [Users and allowances](apps/docs/docs/en/users.md) · [Providers, models & pricing](apps/docs/docs/en/providers.md)
-- [REST API & integration (Mocky, Muse…)](apps/docs/docs/en/api.md) · [MCP server for Claude Code](apps/docs/docs/en/mcp.md)
+- [Use your assets in Mocky](apps/docs/docs/en/connected-apps.md) · [REST API & integration (Mocky, Muse…)](apps/docs/docs/en/api.md) · [MCP server for Claude Code](apps/docs/docs/en/mcp.md)
 - [Architecture](apps/docs/docs/en/architecture.md) · [Roadmap](apps/docs/docs/en/roadmap.md) · [Competitive analysis](apps/docs/docs/en/competitive-analysis.md)
 - En français : [apps/docs/docs/fr](apps/docs/docs/fr/)
 

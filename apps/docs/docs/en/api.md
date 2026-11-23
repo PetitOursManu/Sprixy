@@ -103,6 +103,11 @@ Administrator only (`403` otherwise). See [Users and allowances](users.md).
 
 `GET /api/v1/usage` returns the account's allowance under `limits`; a job over it fails with `402 BUDGET_EXCEEDED`.
 
+## Catalog for connected apps
+
+Read-only view of the projects shared with apps (Mocky…), for catalog tokens (`scope: "catalog"`). See
+[Use your assets in Mocky](connected-apps.md#the-catalog-api).
+
 ## Free endpoints (no AI call)
 
 | Endpoint | Purpose |

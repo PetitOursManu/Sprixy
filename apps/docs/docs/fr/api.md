@@ -2,7 +2,7 @@
 title: API REST
 description: Tous les endpoints, l'authentification, les spécifications de tâches, les webhooks et les outils de traitement gratuits — pour Mocky, Muse ou n'importe quel client.
 audience: [dev]
-source_hash: 1bcac7bc8c6d
+source_hash: ba9ff051ec6d
 ---
 
 La référence complète et toujours à jour est générée à partir des schémas du serveur : **`/api/docs`** (Swagger UI)
@@ -108,6 +108,11 @@ Réservé aux administrateurs (`403` sinon). Voir [Utilisateurs et enveloppes](u
 
 `GET /api/v1/usage` renvoie l'enveloppe du compte dans `limits` ; une tâche qui la dépasserait échoue avec
 `402 BUDGET_EXCEEDED`.
+
+## Catalogue pour les applications reliées
+
+Vue en lecture seule des projets partagés avec des applications (Mocky…), pour les jetons de catalogue
+(`scope: "catalog"`). Voir [Utiliser vos assets dans Mocky](connected-apps.md#lapi-du-catalogue).
 
 ## Endpoints gratuits (sans appel à l'IA)
 
