@@ -86,9 +86,22 @@ const ok = req.headers['x-sprixy-signature'] === `sha256=${expected}`;
 ## Provider balance
 
 `GET /api/v1/providers/balance` returns the remaining prepaid balance of each provider (`status`: `ok`, `needs_billing_key`,
-`unavailable`, `not_configured`), cached 60 s (`?fresh=true` to refresh) and refreshed after every job. fal.ai only
+`unavailable`, `not_configured`, `shared` when the account uses an administrator's key), cached 60 s (`?fresh=true` to refresh) and refreshed after every job. fal.ai only
 shows billing to ADMIN-scope keys: store one with `PUT /api/v1/keys/fal/billing {"key": "…"}` — it is checked, encrypted,
 and used only to read the balance (`DELETE` removes it). OpenRouter reports account credits or the key's remaining limit.
+
+## Administration {#administration}
+
+Administrator only (`403` otherwise). See [Users and allowances](users.md).
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/v1/admin/users` | Accounts with role, allowance, own keys, spend today and this month, plus totals |
+| `POST /api/v1/admin/users` | Create an account: `email`, `name`, `password`, `role`, `monthlyCapUsd`, `dailyCapUsd`, `sharedKeys` |
+| `PATCH /api/v1/admin/users/:id` | Change `name`, `role`, `password`, `disabled`, `monthlyCapUsd`, `dailyCapUsd`, `sharedKeys` |
+| `DELETE /api/v1/admin/users/:id` | Delete the account and everything it owns (`409` while it has a job running) |
+
+`GET /api/v1/usage` returns the account's allowance under `limits`; a job over it fails with `402 BUDGET_EXCEEDED`.
 
 ## Free endpoints (no AI call)
 

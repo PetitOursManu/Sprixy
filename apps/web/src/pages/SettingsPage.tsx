@@ -52,7 +52,7 @@ function ProviderKeys() {
           return (
             <div key={p.id} className="step-item" style={{ alignItems: 'flex-start', padding: 12, flexDirection: 'column', gap: 8 }}>
               <div className="row between" style={{ width: '100%' }}>
-                <div className="row"><strong>{p.name}</strong>{k ? <span className={`chip ${k.status === 'valid' ? 'green' : k.status === 'invalid' ? 'red' : ''}`}>{k.status} · {k.hint}</span> : <span className="chip">not configured</span>}</div>
+                <div className="row"><strong>{p.name}</strong>{k ? <span className={`chip ${k.status === 'valid' ? 'green' : k.status === 'invalid' ? 'red' : ''}`}>{k.status} · {k.hint}</span> : p.configured ? <span className="chip cyan" title="Jobs use the key of an administrator of this instance, within your allowance">shared by your administrator</span> : <span className="chip">not configured</span>}</div>
                 <a className="small" href={p.keyHelpUrl} target="_blank" rel="noreferrer">Get a key ↗</a>
               </div>
               <span className="small muted">{PROVIDER_NOTES[p.id]}</span>

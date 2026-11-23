@@ -26,7 +26,7 @@
   ],
   "nav": [
     { "group": { "en": "Get started", "fr": "Démarrer" }, "pages": ["index", "getting-started", "guide"] },
-    { "group": { "en": "Run it", "fr": "Mettre en ligne" }, "pages": ["deployment", "providers"] },
+    { "group": { "en": "Run it", "fr": "Mettre en ligne" }, "pages": ["deployment", "users", "providers"] },
     { "group": { "en": "Integrate", "fr": "Intégrer" }, "pages": ["api", "mcp"] },
     { "group": { "en": "Project", "fr": "Projet" }, "pages": ["architecture", "roadmap", "competitive-analysis", "glossary", { "label": "Changelog", "link": "https://github.com/PetitOursManu/Sprixy/commits/main" }] }
   ]

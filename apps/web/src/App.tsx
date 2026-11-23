@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
 import { Icon, Spinner, StatusLed } from './components/ui';
-import { useActiveJobs, useBalances, useProjects, useUsageSummary } from './hooks';
+import { monthlyLimit, useActiveJobs, useBalances, useProjects, useUsageSummary } from './hooks';
 import { fmtUsd } from './api';
 import { AuthPage } from './pages/AuthPage';
 import { ProjectsPage } from './pages/ProjectsPage';
@@ -16,6 +16,7 @@ import { LorasPage } from './pages/LorasPage';
 import { DatasetsPage, DatasetPage } from './pages/DatasetsPage';
 import { UsagePage } from './pages/UsagePage';
 import { SettingsPage } from './pages/SettingsPage';
+import { UsersPage } from './pages/UsersPage';
 
 /** Below this, the header balance turns orange. */
 const LOW_BALANCE = 1;
@@ -34,7 +35,9 @@ function Shell({ children }: { children: ReactNode }) {
   const user = status?.user;
   const initial = (user?.name || user?.email || '?').slice(0, 1).toUpperCase();
   const month = usage.data?.month ?? 0;
-  const cap = usage.data?.budget.monthlyBudgetUsd ?? null;
+  const cap = monthlyLimit(usage.data);
+  const allowance = usage.data?.limits?.monthlyCapUsd ?? null;
+  const sharing = (balances.data?.items ?? []).some((b) => b.status === 'shared');
   const inProject = loc.pathname.startsWith('/projects/');
   return (
     <div className={`shell ${open ? 'nav-open' : ''}`} onClick={() => open && setOpen(false)}>
@@ -52,6 +55,11 @@ function Shell({ children }: { children: ReactNode }) {
             <Link key={b.provider} to="/settings" className="pill balance muted hide-mobile" title={b.message}><Icon name="wallet" size={14} />{b.name} balance: add a billing key</Link>
           ) : null
         ))}
+        {sharing && allowance !== null && (
+          <Link to="/usage" className={`pill balance ${allowance - month < LOW_BALANCE ? 'low' : ''}`} title="Monthly allowance set by your administrator">
+            <Icon name="wallet" size={14} /><span className="hide-mobile">Allowance left</span><strong>{fmtUsd(Math.max(0, allowance - month), 2)}</strong>
+          </Link>
+        )}
         <span className="pill hide-mobile"><span className="led" style={{ background: 'var(--cyan)' }} /> Self-hosted</span>
         <span className="avatar" title={user?.email}>{initial}</span>
         <button className="btn ghost icon mobile-only" style={{ position: 'fixed', top: 11, right: 10, zIndex: 30 }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }} aria-label="Menu"><Icon name="menu" /></button>
@@ -75,6 +83,7 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="nav-label">Account</div>
           <NavLink to="/usage"><Icon name="chart" /> Usage & budget</NavLink>
           <NavLink to="/settings"><Icon name="cog" /> Settings</NavLink>
+          {user?.role === 'admin' && <NavLink to="/admin/users"><Icon name="users" /> Users</NavLink>}
           <a href="/docs/" target="_blank" rel="noreferrer"><Icon name="book" /> Documentation</a>
           <a href="/api/docs" target="_blank" rel="noreferrer"><Icon name="link" /> API reference</a>
         </nav>
@@ -121,6 +130,7 @@ export function App() {
           <Route path="/datasets/:id" element={<DatasetPage />} />
           <Route path="/usage" element={<UsagePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin/users" element={<UsersPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

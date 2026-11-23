@@ -16,7 +16,7 @@ spritesheet slicing (grid & automatic), frame alignment, packing, recoloring, se
 ## Phase 2 — Server, BYOK & providers ✅
 Fastify + SQLite, accounts, sessions, API tokens, encrypted provider keys, fal.ai & OpenRouter adapters, curated model
 catalogue with live pricing, art direction & prompt builder, asynchronous jobs (generate, variant, directions,
-animate, AI cutout, LoRA training) with resumable fal jobs, budgets and usage analytics.
+animate, AI cutout, LoRA training) with resumable fal jobs, budgets and usage analytics, admin-managed accounts with spending allowances and shared provider keys.
 
 ## Phase 3 — Library, processing & exports ✅
 Assets, variants, tags, favorites, collections, batch actions, import with conversion, processing endpoints,
@@ -49,6 +49,6 @@ animation method (4 directions × walk / attack / hurt) through a community spri
 - Real-run validation of LoRA training on fal.ai.
 - More providers (Replicate, Together, self-hosted ComfyUI endpoint) through the `ProviderAdapter` interface.
 - Skeleton / keypoint-driven animation; blob-47, isometric and hex tiles; normal maps.
-- Team workspaces and shared projects; per-user quotas set by the admin.
+- Team workspaces and shared projects.
 - Aseprite `.aseprite` import.
 - Palette-aware AI upscaling and "pixel cleanup" model option.

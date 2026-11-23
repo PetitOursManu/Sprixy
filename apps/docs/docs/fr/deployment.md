@@ -2,7 +2,7 @@
 title: Déployer
 description: Faire tourner Sprixy avec Coolify ou Docker Compose — un conteneur, un volume, pas de GPU.
 audience: [admin]
-source_hash: b94cb069d56c
+source_hash: 4c05ffd18655
 ---
 
 Sprixy est un conteneur unique : l'application web, l'API REST, l'endpoint MCP et cette documentation (servie sur
@@ -36,8 +36,9 @@ Coolify, des cookies sécurisés, un volume `/data` persistant et un contrôle d
    OpenRouter.
 :::
 
-Variables optionnelles (onglet Environment Variables) : `SPRIXY_ALLOW_SIGNUP=true` pour permettre à d'autres
-personnes de s'inscrire, `SPRIXY_MAX_UPLOAD_MB`, `LOG_LEVEL`.
+Pour donner accès à d'autres personnes, créez leurs comptes dans **Users** ([Utilisateurs et enveloppes](users.md)).
+Variables optionnelles (onglet Environment Variables) : `SPRIXY_ALLOW_SIGNUP=true` pour laisser plutôt n'importe qui
+s'inscrire, `SPRIXY_MAX_UPLOAD_MB`, `LOG_LEVEL`.
 
 **Mises à jour :** cliquez sur **Redeploy**, ou activez *Auto Deploy* pour redéployer à chaque push. Les données
 restent dans le volume et les migrations s'exécutent au démarrage.

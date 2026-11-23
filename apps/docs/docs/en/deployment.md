@@ -33,7 +33,8 @@ Coolify, secure cookies, a persistent `/data` volume and a health check.
 7. **Add a provider key.** In Sprixy, **Settings → Provider keys**: paste your fal.ai and/or OpenRouter key.
 :::
 
-Optional variables (Environment Variables tab): `SPRIXY_ALLOW_SIGNUP=true` to let other people sign up,
+To give other people access, create their accounts under **Users** ([Users and allowances](users.md)).
+Optional variables (Environment Variables tab): `SPRIXY_ALLOW_SIGNUP=true` to let anyone sign up instead,
 `SPRIXY_MAX_UPLOAD_MB`, `LOG_LEVEL`.
 
 **Updates:** click **Redeploy**, or turn on *Auto Deploy* to redeploy on every push. Data stays in the volume and

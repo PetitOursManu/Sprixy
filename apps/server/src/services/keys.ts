@@ -73,9 +73,28 @@ export function deleteKey(userId: string, provider: string) {
   getDb().run('DELETE FROM provider_keys WHERE user_id = ? AND provider = ?', userId, provider);
 }
 
+/**
+ * Whose key pays for this user's calls to a provider: the user's own key, otherwise — when an administrator allowed it
+ * (shared keys) — the key of the admin who created the account, or of the oldest admin that has one.
+ */
+export function keyOwner(userId: string, provider: string): string | null {
+  const db = getDb();
+  if (db.get('SELECT 1 FROM provider_keys WHERE user_id = ? AND provider = ?', userId, provider)) return userId;
+  const shared = db.get<{ shared_keys: number; created_by: string | null }>(
+    'SELECT s.shared_keys, u.created_by FROM users u LEFT JOIN user_settings s ON s.user_id = u.id WHERE u.id = ?', userId,
+  );
+  if (!shared?.shared_keys) return null;
+  const admin = db.get<{ id: string }>(
+    `SELECT u.id FROM users u JOIN provider_keys k ON k.user_id = u.id AND k.provider = ?
+     WHERE u.role = 'admin' AND u.disabled_at IS NULL ORDER BY (u.id = ?) DESC, u.created_at LIMIT 1`, provider, shared.created_by ?? '',
+  );
+  return admin?.id ?? null;
+}
+
 /** Decrypt a key for server-side use only. */
 export function getSecret(userId: string, provider: string): string {
-  const row = getDb().get<KeyRow>('SELECT * FROM provider_keys WHERE user_id = ? AND provider = ?', userId, provider);
+  const owner = keyOwner(userId, provider);
+  const row = owner ? getDb().get<KeyRow>('SELECT * FROM provider_keys WHERE user_id = ? AND provider = ?', owner, provider) : undefined;
   if (!row) throw new HttpError(400, 'MISSING_API_KEY', `No ${provider} API key configured. Add one in Settings → Provider keys.`);
   return decryptSecret(row.secret_enc);
 }
@@ -86,7 +105,7 @@ export interface BalanceDto {
   provider: string;
   name: string;
   configured: boolean;
-  /** 'ok' | 'needs_billing_key' (key not allowed to read billing) | 'unavailable' | 'not_supported' | 'not_configured' */
+  /** 'ok' | 'needs_billing_key' (key not allowed to read billing) | 'unavailable' | 'not_supported' | 'not_configured' | 'shared' (uses an admin's key) */
   status: string;
   balanceUsd: number | null;
   detail?: string;
@@ -105,7 +124,10 @@ function billingSecret(userId: string, provider: string): string | null {
 
 /** Forget cached balances (after a job spent credit). */
 export function invalidateBalances(userId: string): void {
-  for (const key of balanceCache.keys()) if (key.startsWith(`${userId}:`)) balanceCache.delete(key);
+  const owners = new Set([userId]);
+  // A job paid with a shared key spent the admin's credit.
+  for (const p of Object.keys(PROVIDERS)) { const o = keyOwner(userId, p); if (o) owners.add(o); }
+  for (const key of balanceCache.keys()) if (owners.has(key.split(':')[0]!)) balanceCache.delete(key);
 }
 
 /** Remaining balance per provider. The optional billing key is tried first (fal.ai only shows billing to ADMIN keys). */
@@ -118,7 +140,9 @@ export async function getBalances(userId: string, opts: { fresh?: boolean } = {}
     const row = getDb().get<{ billing_last4: string | null }>('SELECT billing_last4 FROM provider_keys WHERE user_id = ? AND provider = ?', userId, p.id);
     const base = { provider: p.id, name: p.name, configured: !!row, billingKey: row?.billing_last4 ? `••••${row.billing_last4}` : null, checkedAt: Date.now() };
     let dto: BalanceDto;
-    if (!row) dto = { ...base, status: 'not_configured', balanceUsd: null };
+    // The administrators' credit is not shown to accounts that only borrow their keys: they see their allowance instead.
+    if (!row && keyOwner(userId, p.id)) dto = { ...base, status: 'shared', balanceUsd: null };
+    else if (!row) dto = { ...base, status: 'not_configured', balanceUsd: null };
     else if (!p.getBalance) dto = { ...base, status: 'not_supported', balanceUsd: null };
     else {
       const keys = [billingSecret(userId, p.id), getSecret(userId, p.id)].filter((k): k is string => !!k);
@@ -136,7 +160,7 @@ export async function getBalances(userId: string, opts: { fresh?: boolean } = {}
 
 /** Store (after checking it can read the balance) or remove the read-only billing key of a provider. */
 export async function setBillingKey(userId: string, provider: ProviderId, secret: string | null) {
-  if (!hasKey(userId, provider)) throw new HttpError(400, 'MISSING_API_KEY', `Add your ${provider} API key first.`);
+  if (keyOwner(userId, provider) !== userId) throw new HttpError(400, 'MISSING_API_KEY', `Add your ${provider} API key first.`);
   if (secret === null) {
     getDb().run('UPDATE provider_keys SET billing_secret_enc = NULL, billing_last4 = NULL WHERE user_id = ? AND provider = ?', userId, provider);
   } else {
@@ -151,6 +175,7 @@ export async function setBillingKey(userId: string, provider: ProviderId, secret
   return (await getBalances(userId)).find((b) => b.provider === provider)!;
 }
 
+/** True when the user can call this provider, with their own key or a shared one. */
 export function hasKey(userId: string, provider: string): boolean {
-  return !!getDb().get('SELECT 1 FROM provider_keys WHERE user_id = ? AND provider = ?', userId, provider);
+  return keyOwner(userId, provider) !== null;
 }

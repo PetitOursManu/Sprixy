@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fmtUsd, get, post, qs, timeAgo, type Asset, type Generation, type Project, type Perspective } from '../api';
 import { useAuth } from '../auth';
-import { useActiveJobs, useMeta, useProjects, useUsageSummary } from '../hooks';
+import { monthlyLimit, useActiveJobs, useMeta, useProjects, useUsageSummary } from '../hooks';
 import { Empty, Field, Icon, Modal, StatusLed, Swatches, useToast } from '../components/ui';
 
 const PERSPECTIVES: { value: Perspective; label: string }[] = [
@@ -35,7 +35,7 @@ export function ProjectsPage() {
   const items = projects.data?.items ?? [];
   const total = items.reduce((s, p) => s + (p.assetCount ?? 0), 0);
   const month = usage.data?.month ?? 0;
-  const cap = usage.data?.budget.monthlyBudgetUsd ?? null;
+  const cap = monthlyLimit(usage.data);
   const running = jobs.data?.items ?? [];
   const names = Object.fromEntries(items.map((p) => [p.id, p.name]));
   return (

@@ -25,6 +25,14 @@ export function useProjects() {
 export interface UsageSummary {
   days: number; today: number; month: number; jobsToday: number;
   budget: { monthlyBudgetUsd: number | null; dailyBudgetUsd: number | null; maxCostPerJobUsd: number | null; dailyJobLimit: number | null };
+  /** Set by an administrator; the user cannot raise them. */
+  limits: { monthlyCapUsd: number | null; dailyCapUsd: number | null; sharedKeys: boolean };
+}
+
+/** The lower of the user's own monthly budget and the allowance an admin gave them. */
+export function monthlyLimit(u: UsageSummary | undefined): number | null {
+  const v = [u?.budget.monthlyBudgetUsd, u?.limits?.monthlyCapUsd].filter((x): x is number => typeof x === 'number');
+  return v.length ? Math.min(...v) : null;
 }
 
 /** Month / day spend and budgets (shared with the Usage page cache). */
@@ -34,7 +42,7 @@ export function useUsageSummary() {
 
 export interface Balance {
   provider: string; name: string; configured: boolean;
-  status: 'ok' | 'needs_billing_key' | 'unavailable' | 'not_supported' | 'not_configured';
+  status: 'ok' | 'needs_billing_key' | 'unavailable' | 'not_supported' | 'not_configured' | 'shared';
   balanceUsd: number | null; detail?: string; message?: string; billingKey: string | null; checkedAt: number;
 }
 

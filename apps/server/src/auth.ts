@@ -23,8 +23,9 @@ declare module 'fastify' {
 export const SESSION_COOKIE = 'sprixy_session';
 export const TOKEN_PREFIX = 'spx_';
 
+/** An active (not disabled) account. */
 function userById(id: string): AuthUser | undefined {
-  return getDb().get<AuthUser>('SELECT id, email, name, role FROM users WHERE id = ?', id);
+  return getDb().get<AuthUser>('SELECT id, email, name, role FROM users WHERE id = ? AND disabled_at IS NULL', id);
 }
 
 /** Resolve the user from a Bearer API token or the session cookie. */
@@ -53,6 +54,12 @@ export function resolveUser(req: FastifyRequest): void {
 export function requireUser(req: FastifyRequest): AuthUser {
   if (!req.user) throw unauthorized();
   return req.user;
+}
+
+export function requireAdmin(req: FastifyRequest): AuthUser {
+  const u = requireUser(req);
+  if (u.role !== 'admin') throw forbidden('Administrator only');
+  return u;
 }
 
 function startSession(reply: FastifyReply, userId: string) {
@@ -98,8 +105,9 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   r.post('/api/v1/auth/login', { schema: { tags: ['auth'], summary: 'Sign in (sets a session cookie)', body: credentials } }, async (req, reply) => {
-    const row = getDb().get<{ id: string; password_hash: string }>('SELECT id, password_hash FROM users WHERE email = ?', req.body.email);
+    const row = getDb().get<{ id: string; password_hash: string; disabled_at: number | null }>('SELECT id, password_hash, disabled_at FROM users WHERE email = ?', req.body.email);
     if (!row || !(await verifyPassword(req.body.password, row.password_hash))) throw new HttpError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+    if (row.disabled_at) throw new HttpError(403, 'ACCOUNT_DISABLED', 'This account has been disabled by an administrator');
     startSession(reply, row.id);
     return { user: userById(row.id) };
   });

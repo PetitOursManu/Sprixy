@@ -30,12 +30,36 @@ export function setBudget(userId: string, b: BudgetSettings): BudgetSettings {
   return getBudget(userId);
 }
 
-function startOfDay(): number {
+/** Limits an administrator sets on an account. The user cannot raise them. */
+export interface AdminLimits {
+  monthlyCapUsd: number | null;
+  dailyCapUsd: number | null;
+  /** The account may use the administrators' provider keys when it has none of its own. */
+  sharedKeys: boolean;
+}
+
+export function getLimits(userId: string): AdminLimits {
+  const r = getDb().get<{ cap_monthly_usd: number | null; cap_daily_usd: number | null; shared_keys: number }>(
+    'SELECT cap_monthly_usd, cap_daily_usd, shared_keys FROM user_settings WHERE user_id = ?', userId,
+  );
+  return { monthlyCapUsd: r?.cap_monthly_usd ?? null, dailyCapUsd: r?.cap_daily_usd ?? null, sharedKeys: !!r?.shared_keys };
+}
+
+export function setLimits(userId: string, l: AdminLimits): AdminLimits {
+  getDb().run(
+    `INSERT INTO user_settings (user_id, cap_monthly_usd, cap_daily_usd, shared_keys) VALUES (?,?,?,?)
+     ON CONFLICT(user_id) DO UPDATE SET cap_monthly_usd=excluded.cap_monthly_usd, cap_daily_usd=excluded.cap_daily_usd, shared_keys=excluded.shared_keys`,
+    userId, l.monthlyCapUsd, l.dailyCapUsd, l.sharedKeys ? 1 : 0,
+  );
+  return getLimits(userId);
+}
+
+export function startOfDay(): number {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
-function startOfMonth(): number {
+export function startOfMonth(): number {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
 }
@@ -67,6 +91,13 @@ export function assertWithinBudget(userId: string, estimateUsd: number | null): 
   if (b.monthlyBudgetUsd !== null && spentSince(userId, startOfMonth()) + est > b.monthlyBudgetUsd) {
     throw new HttpError(402, 'BUDGET_EXCEEDED', `Monthly budget of $${b.monthlyBudgetUsd} would be exceeded`);
   }
+  const l = getLimits(userId);
+  if (l.dailyCapUsd !== null && spentSince(userId, startOfDay()) + est > l.dailyCapUsd) {
+    throw new HttpError(402, 'BUDGET_EXCEEDED', `Daily allowance of $${l.dailyCapUsd} set by your administrator would be exceeded`);
+  }
+  if (l.monthlyCapUsd !== null && spentSince(userId, startOfMonth()) + est > l.monthlyCapUsd) {
+    throw new HttpError(402, 'BUDGET_EXCEEDED', `Monthly allowance of $${l.monthlyCapUsd} set by your administrator would be exceeded`);
+  }
 }
 
 export function usageSummary(userId: string, days = 30) {
@@ -91,6 +122,7 @@ export function usageSummary(userId: string, days = 30) {
     month: spentSince(userId, startOfMonth()),
     jobsToday: jobsSince(userId, startOfDay()),
     budget: getBudget(userId),
+    limits: getLimits(userId),
     byDay,
     byProvider,
     byModel: byModel.map((m) => ({ modelId: m.model_id, cost: m.cost, jobs: m.jobs })),

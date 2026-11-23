@@ -4,8 +4,9 @@ import { fmtUsd, get, put } from '../api';
 import { Field, Segmented, useToast } from '../components/ui';
 
 interface Budget { monthlyBudgetUsd: number | null; dailyBudgetUsd: number | null; maxCostPerJobUsd: number | null; dailyJobLimit: number | null }
+interface Limits { monthlyCapUsd: number | null; dailyCapUsd: number | null; sharedKeys: boolean }
 interface Usage {
-  days: number; today: number; month: number; jobsToday: number; budget: Budget;
+  days: number; today: number; month: number; jobsToday: number; budget: Budget; limits: Limits;
   byDay: { day: string; cost: number; jobs: number }[];
   byProvider: { provider: string; cost: number; jobs: number }[];
   byModel: { modelId: string; cost: number; jobs: number }[];
@@ -31,6 +32,9 @@ export function UsagePage() {
   const max = Math.max(0.0001, ...series.map((s) => s.cost));
   const total = series.reduce((s, x) => s + x.cost, 0);
   const pct = (v: number, b: number | null) => (b ? Math.min(100, (v / b) * 100) : 0);
+  const lower = (a: number | null, b: number | null) => (a === null ? b : b === null ? a : Math.min(a, b));
+  const dayCap = u ? lower(u.budget.dailyBudgetUsd, u.limits.dailyCapUsd) : null;
+  const monthCap = u ? lower(u.budget.monthlyBudgetUsd, u.limits.monthlyCapUsd) : null;
   return (
     <>
       <div className="topbar"><div className="crumbs"><strong>Usage & budget</strong></div></div>
@@ -41,11 +45,21 @@ export function UsagePage() {
         </div>
         {u && (
           <>
+            {(u.limits.monthlyCapUsd !== null || u.limits.dailyCapUsd !== null || u.limits.sharedKeys) && (
+              <div className="notice">
+                <strong>Set by your administrator: </strong>
+                {[
+                  u.limits.monthlyCapUsd !== null && `${fmtUsd(u.limits.monthlyCapUsd, 2)} per month (${fmtUsd(Math.max(0, u.limits.monthlyCapUsd - u.month), 2)} left)`,
+                  u.limits.dailyCapUsd !== null && `${fmtUsd(u.limits.dailyCapUsd, 2)} per day`,
+                  u.limits.sharedKeys && 'jobs run on the instance’s provider keys when you have none of your own',
+                ].filter(Boolean).join(' · ')}. You can set lower limits below, not higher ones.
+              </div>
+            )}
             <div className="grid-4">
               <div className="panel"><div className="panel-body"><div className="stat"><span className="k">Today</span><span className="v cost">{fmtUsd(u.today, 3)}</span></div>
-                {u.budget.dailyBudgetUsd !== null && <Gauge pct={pct(u.today, u.budget.dailyBudgetUsd)} label={`of ${fmtUsd(u.budget.dailyBudgetUsd, 2)}`} />}</div></div>
+                {dayCap !== null && <Gauge pct={pct(u.today, dayCap)} label={`of ${fmtUsd(dayCap, 2)}`} />}</div></div>
               <div className="panel"><div className="panel-body"><div className="stat"><span className="k">This month</span><span className="v cost">{fmtUsd(u.month, 3)}</span></div>
-                {u.budget.monthlyBudgetUsd !== null && <Gauge pct={pct(u.month, u.budget.monthlyBudgetUsd)} label={`of ${fmtUsd(u.budget.monthlyBudgetUsd, 2)}`} />}</div></div>
+                {monthCap !== null && <Gauge pct={pct(u.month, monthCap)} label={`of ${fmtUsd(monthCap, 2)}`} />}</div></div>
               <div className="panel"><div className="panel-body"><div className="stat"><span className="k">Jobs today</span><span className="v">{u.jobsToday}{u.budget.dailyJobLimit !== null && <span className="muted" style={{ fontSize: 14 }}> / {u.budget.dailyJobLimit}</span>}</span></div></div></div>
               <div className="panel"><div className="panel-body"><div className="stat"><span className="k">Last {days} days</span><span className="v cost">{fmtUsd(total, 3)}</span></div></div></div>
             </div>

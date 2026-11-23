@@ -260,6 +260,50 @@ describe('Sprixy API', () => {
     }
   });
 
+  it('lets the admin create capped accounts that use the shared keys', async () => {
+    const as = (c: string) => async (method: string, url: string, payload?: unknown) =>
+      app.inject({ method: method as 'GET', url, payload: payload as object, headers: { cookie: c } });
+    const admin = as(cookie);
+    const created = await admin('POST', '/api/v1/admin/users', { email: 'alice@example.test', name: 'Alice', password: 'alice password', monthlyCapUsd: 0.0001, sharedKeys: true });
+    expect(created.statusCode).toBe(201);
+    const aliceId = created.json().user.id;
+    expect(created.json().user).toMatchObject({ role: 'user', disabled: false, limits: { monthlyCapUsd: 0.0001, dailyCapUsd: null, sharedKeys: true }, ownKeys: [] });
+    expect((await admin('POST', '/api/v1/admin/users', { email: 'ALICE@example.test', name: 'A2', password: 'another one' })).statusCode).toBe(409);
+
+    const login = await call('POST', '/api/v1/auth/login', { email: 'alice@example.test', password: 'alice password' }, 'none');
+    expect(login.statusCode).toBe(200);
+    const alice = as(String(login.headers['set-cookie']).split(';')[0]);
+    expect((await alice('GET', '/api/v1/admin/users')).statusCode).toBe(403);
+    // The admin's fal key is usable but its credit is not shown to Alice.
+    expect((await alice('GET', '/api/v1/providers')).json().items.find((p: { id: string }) => p.id === 'fal').configured).toBe(true);
+    expect((await alice('GET', '/api/v1/providers/balance')).json().items.find((b: { provider: string }) => b.provider === 'fal').status).toBe('shared');
+    expect((await alice('GET', '/api/v1/usage')).json().limits.monthlyCapUsd).toBe(0.0001);
+    const proj = (await alice('POST', '/api/v1/projects', { name: 'Alice game' })).json().id;
+    const spec = { task: 'generate', projectId: proj, kind: 'sprite', prompt: 'a coin' };
+    const capped = await alice('POST', '/api/v1/generations', spec);
+    expect(capped.statusCode).toBe(402);
+    expect(capped.json().error.message).toContain('administrator');
+    // Alice cannot see the admin's projects.
+    expect((await alice('GET', `/api/v1/projects/${projectId}`)).statusCode).toBe(404);
+
+    await admin('PATCH', `/api/v1/admin/users/${aliceId}`, { sharedKeys: false });
+    expect((await alice('POST', '/api/v1/generations', spec)).json().error.code).toBe('MISSING_API_KEY');
+
+    const me = (await admin('GET', '/api/v1/auth/me')).json().user.id;
+    expect((await admin('PATCH', `/api/v1/admin/users/${me}`, { role: 'user' })).statusCode).toBe(400);
+    expect((await admin('DELETE', `/api/v1/admin/users/${me}`)).statusCode).toBe(400);
+
+    await admin('PATCH', `/api/v1/admin/users/${aliceId}`, { disabled: true });
+    expect((await alice('GET', '/api/v1/projects')).statusCode).toBe(401);
+    expect((await call('POST', '/api/v1/auth/login', { email: 'alice@example.test', password: 'alice password' }, 'none')).statusCode).toBe(403);
+
+    const list = (await admin('GET', '/api/v1/admin/users')).json();
+    expect(list.items).toHaveLength(2);
+    expect(list.totals.allocatedMonth).toBe(0.0001);
+    expect((await admin('DELETE', `/api/v1/admin/users/${aliceId}`)).statusCode).toBe(200);
+    expect((await admin('GET', '/api/v1/admin/users')).json().items).toHaveLength(1);
+  });
+
   it('exposes OpenAPI docs and meta', async () => {
     const spec = await call('GET', '/api/docs/json', undefined, 'none');
     expect(spec.statusCode).toBe(200);

@@ -19,6 +19,7 @@ import { accountRoutes } from './routes/account.js';
 import { exportRoutes } from './routes/exports.js';
 import { mcpRoutes } from './mcp.js';
 import { tilesetRoutes } from './routes/tilesets.js';
+import { adminRoutes } from './routes/admin.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -78,6 +79,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(accountRoutes);
   await app.register(exportRoutes);
   await app.register(tilesetRoutes);
+  await app.register(adminRoutes);
   await app.register(mcpRoutes);
 
   const here = path.dirname(fileURLToPath(import.meta.url));

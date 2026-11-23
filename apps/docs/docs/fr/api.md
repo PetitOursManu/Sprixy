@@ -2,7 +2,7 @@
 title: API REST
 description: Tous les endpoints, l'authentification, les spécifications de tâches, les webhooks et les outils de traitement gratuits — pour Mocky, Muse ou n'importe quel client.
 audience: [dev]
-source_hash: 32fe3980044b
+source_hash: 1bcac7bc8c6d
 ---
 
 La référence complète et toujours à jour est générée à partir des schémas du serveur : **`/api/docs`** (Swagger UI)
@@ -89,10 +89,25 @@ const ok = req.headers['x-sprixy-signature'] === `sha256=${expected}`;
 ## Solde des fournisseurs
 
 `GET /api/v1/providers/balance` renvoie le solde prépayé restant de chaque fournisseur (`status` : `ok`,
-`needs_billing_key`, `unavailable`, `not_configured`), mis en cache 60 s (`?fresh=true` pour l'actualiser) et
+`needs_billing_key`, `unavailable`, `not_configured`, `shared` quand le compte utilise la clé d'un administrateur),
+mis en cache 60 s (`?fresh=true` pour l'actualiser) et
 actualisé après chaque tâche. fal.ai ne montre la facturation qu'aux clés de portée ADMIN : enregistrez-en une avec
 `PUT /api/v1/keys/fal/billing {"key": "…"}` — elle est vérifiée, chiffrée et sert uniquement à lire le solde
 (`DELETE` la supprime). OpenRouter indique les crédits du compte ou la limite restante de la clé.
+
+## Administration {#administration}
+
+Réservé aux administrateurs (`403` sinon). Voir [Utilisateurs et enveloppes](users.md).
+
+| Endpoint | Rôle |
+| --- | --- |
+| `GET /api/v1/admin/users` | Les comptes avec leur rôle, leur enveloppe, leurs clés, leurs dépenses du jour et du mois, et les totaux |
+| `POST /api/v1/admin/users` | Créer un compte : `email`, `name`, `password`, `role`, `monthlyCapUsd`, `dailyCapUsd`, `sharedKeys` |
+| `PATCH /api/v1/admin/users/:id` | Modifier `name`, `role`, `password`, `disabled`, `monthlyCapUsd`, `dailyCapUsd`, `sharedKeys` |
+| `DELETE /api/v1/admin/users/:id` | Supprimer le compte et tout ce qu'il possède (`409` tant qu'une tâche est en cours) |
+
+`GET /api/v1/usage` renvoie l'enveloppe du compte dans `limits` ; une tâche qui la dépasserait échoue avec
+`402 BUDGET_EXCEEDED`.
 
 ## Endpoints gratuits (sans appel à l'IA)
 

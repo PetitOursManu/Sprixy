@@ -169,4 +169,11 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE provider_keys ADD COLUMN billing_secret_enc TEXT;
   ALTER TABLE provider_keys ADD COLUMN billing_last4 TEXT;
   `,
+  /* 4 — user management: accounts created and capped by an admin, optionally using the admins' provider keys */ `
+  ALTER TABLE users ADD COLUMN disabled_at INTEGER;
+  ALTER TABLE users ADD COLUMN created_by TEXT;
+  ALTER TABLE user_settings ADD COLUMN cap_monthly_usd REAL;
+  ALTER TABLE user_settings ADD COLUMN cap_daily_usd REAL;
+  ALTER TABLE user_settings ADD COLUMN shared_keys INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

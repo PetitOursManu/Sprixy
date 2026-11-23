@@ -1,7 +1,7 @@
 ---
 title: Feuille de route
 description: Ce qui est fait, phase par phase, et ce qui vient ensuite.
-source_hash: f01dce8e1566
+source_hash: 20aa05f216cd
 ---
 
 Sprixy est organisé en phases fonctionnelles. Chaque phase livre des fonctionnalités qui marchent (pas de boutons
@@ -19,7 +19,7 @@ traitement déclarative, 9 préréglages de palette. Tests unitaires.
 Fastify + SQLite, comptes, sessions, jetons d'API, clés de fournisseur chiffrées, adaptateurs fal.ai et OpenRouter,
 catalogue de modèles sélectionnés avec prix en direct, direction artistique et constructeur de prompts, tâches
 asynchrones (génération, variante, directions, animation, détourage IA, entraînement de LoRA) avec reprise des tâches
-fal, budgets et statistiques de consommation.
+fal, budgets et statistiques de consommation, comptes gérés par l'administrateur avec enveloppes de dépenses et clés partagées.
 
 ## Phase 3 — Bibliothèque, traitement et exports ✅
 Assets, variantes, tags, favoris, collections, actions groupées, import avec conversion, endpoints de traitement,
@@ -57,6 +57,6 @@ une LoRA communautaire de planche de sprites.
 - Valider sur des essais réels l'entraînement de LoRA sur fal.ai.
 - D'autres fournisseurs (Replicate, Together, endpoint ComfyUI auto-hébergé) via l'interface `ProviderAdapter`.
 - Animation pilotée par squelette / points clés ; tuiles blob-47, isométriques et hexagonales ; normal maps.
-- Espaces de travail d'équipe et projets partagés ; quotas par utilisateur fixés par l'administrateur.
+- Espaces de travail d'équipe et projets partagés.
 - Import des fichiers Aseprite `.aseprite`.
 - Agrandissement par IA respectueux de la palette et option de modèle « nettoyage des pixels ».
