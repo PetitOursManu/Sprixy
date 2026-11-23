@@ -60,7 +60,7 @@ open http://localhost:3210
 2. **Settings → Provider keys**: paste your fal.ai and/or OpenRouter key (validated, then encrypted).
 3. Create a project, tune its **Art direction**, then **Generate**.
 
-See [docs/deployment.md](docs/deployment.md) for Coolify, reverse proxies, backups and every environment variable.
+On **Coolify**, use the ready-made `docker-compose.coolify.yml` (Docker Compose build pack). See [docs/deployment.md](docs/deployment.md) for the step-by-step Coolify guide, reverse proxies, backups and every environment variable.
 
 ## Development
 

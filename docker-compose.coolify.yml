@@ -1,0 +1,35 @@
+# Sprixy for Coolify — "Docker Compose" build pack from this Git repository.
+# Docker Compose Location: /docker-compose.coolify.yml  ·  Base Directory: /
+#
+# Coolify fills the SERVICE_* magic variables itself:
+#   SERVICE_URL_SPRIXY_3210   → the domain you attach, routed to container port 3210
+#   SERVICE_REALBASE64_MASTERKEY → base64 of 32 random bytes, generated once and kept across deployments
+# After the first deployment, copy SERVICE_REALBASE64_MASTERKEY (Environment Variables) into your password manager:
+# without it, the provider keys stored in Sprixy cannot be decrypted.
+#
+# No `ports:` on purpose: Coolify's proxy (Traefik/Caddy) serves the domain over HTTPS.
+services:
+  sprixy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - SERVICE_URL_SPRIXY_3210
+      - SPRIXY_PUBLIC_URL=${SERVICE_URL_SPRIXY}
+      - SPRIXY_MASTER_KEY=${SERVICE_REALBASE64_MASTERKEY}
+      - SPRIXY_SECURE_COOKIES=${SPRIXY_SECURE_COOKIES:-true}
+      - SPRIXY_ALLOW_SIGNUP=${SPRIXY_ALLOW_SIGNUP:-false}
+      - SPRIXY_MAX_UPLOAD_MB=${SPRIXY_MAX_UPLOAD_MB:-50}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - sprixy-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3210/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  sprixy-data:
