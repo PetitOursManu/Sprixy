@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { del, get, post, put, timeAgo } from '../api';
+import { del, fmtUsd, get, post, put, timeAgo } from '../api';
+import { useBalances, type Balance } from '../hooks';
 import { useAuth } from '../auth';
 import { Field, Icon, useCopy, useToast } from '../components/ui';
 
@@ -66,10 +67,58 @@ function ProviderKeys() {
                 {k && <button className="btn" onClick={() => check.mutate(p.id)}><Icon name="refresh" size={14} /> Check</button>}
                 {k && <button className="btn danger icon" onClick={() => confirm(`Delete your ${p.name} key?`) && remove.mutate(p.id)}><Icon name="trash" size={14} /></button>}
               </div>
+              {k && <BalanceRow provider={p.id} name={p.name} />}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+const BILLING_HELP: Record<string, string> = {
+  fal: 'fal.ai only shows the balance to ADMIN-scope keys. Create an ADMIN key in your fal.ai dashboard (Keys → scope ADMIN) and paste it here: Sprixy uses it only to read your balance, never to run jobs.',
+  openrouter: 'OpenRouter reports the remaining credits of your account, or the remaining limit of this key.',
+};
+
+/** Balance shown in the header, plus the optional read-only billing key that unlocks it. */
+function BalanceRow({ provider, name }: { provider: string; name: string }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const balances = useBalances();
+  const [draft, setDraft] = useState('');
+  const b = balances.data?.items.find((x) => x.provider === provider);
+  const done = (r: Balance) => { qc.setQueryData<{ items: Balance[] }>(['balance'], (old) => ({ items: (old?.items ?? []).map((x) => (x.provider === r.provider ? r : x)) })); setDraft(''); };
+  const setKey = useMutation({ mutationFn: () => put<Balance>(`/api/v1/keys/${provider}/billing`, { key: draft }), onSuccess: (r) => { done(r); toast('success', `${name} balance: ${fmtUsd(r.balanceUsd, 2)}`); }, onError: (e) => toast('error', (e as Error).message) });
+  const clear = useMutation({ mutationFn: () => del<Balance>(`/api/v1/keys/${provider}/billing`), onSuccess: done });
+  const refresh = useMutation({ mutationFn: () => get<{ items: Balance[] }>('/api/v1/providers/balance?fresh=true'), onSuccess: (r) => qc.setQueryData(['balance'], r) });
+  if (!b || b.status === 'not_supported' || b.status === 'not_configured') return null;
+  return (
+    <div className="col" style={{ width: '100%', gap: 8, paddingTop: 10, borderTop: '1px dashed var(--line)' }}>
+      <div className="row between">
+        <span className="row small" style={{ gap: 8 }}>
+          <Icon name="wallet" size={14} className="muted" />
+          <strong>Balance</strong>
+          {b.status === 'ok' ? <span className="mono" style={{ color: 'var(--green)', fontWeight: 700 }}>{fmtUsd(b.balanceUsd, 2)}</span> : <span className="muted">{b.status === 'needs_billing_key' ? 'needs a billing key' : 'unavailable'}</span>}
+          {b.billingKey && <span className="chip">billing key {b.billingKey}</span>}
+          <span className="muted">· shown in the top bar</span>
+        </span>
+        <span className="row">
+          <button className="btn ghost sm" disabled={refresh.isPending} onClick={() => refresh.mutate()}><Icon name="refresh" size={13} /> Refresh</button>
+          {b.billingKey && <button className="btn ghost sm danger" onClick={() => clear.mutate()}>Remove billing key</button>}
+        </span>
+      </div>
+      {b.status !== 'ok' && (
+        <>
+          <span className="small muted">{BILLING_HELP[provider] ?? b.message}</span>
+          {b.status === 'needs_billing_key' && (
+            <div className="row">
+              <input className="input mono grow" type="password" autoComplete="off" placeholder="Paste a read-only billing key (ADMIN scope)" value={draft} onChange={(e) => setDraft(e.target.value)} />
+              <button className="btn" disabled={draft.length < 8 || setKey.isPending} onClick={() => setKey.mutate()}>Check & save</button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -230,6 +230,34 @@ describe('Sprixy API', () => {
     const job = await call('POST', '/api/v1/generations', { task: 'generate', projectId, kind: 'sprite', prompt: 'a coin' });
     expect(job.statusCode).toBe(402);
     expect(job.json().error.code).toBe('BUDGET_EXCEEDED');
+  });
+
+  it('reads the provider balance, with an optional billing key', async () => {
+    // fal.ai only shows billing to ADMIN keys: the regular key gets a 403, the billing key gets the balance.
+    const real = globalThis.fetch;
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input instanceof Request ? input.url : input);
+      if (!url.includes('/account/billing')) return real(input, init);
+      const auth = new Headers(init?.headers).get('authorization');
+      return auth === 'Key fal-admin-key-1234'
+        ? new Response(JSON.stringify({ credits: { current_balance: 7.4219, currency: 'USD' } }), { status: 200 })
+        : new Response(JSON.stringify({ error: { message: 'not permitted' } }), { status: 403 });
+    });
+    try {
+      const before = (await call('GET', '/api/v1/providers/balance?fresh=true')).json().items;
+      expect(before.find((b: { provider: string }) => b.provider === 'fal').status).toBe('needs_billing_key');
+      expect(before.find((b: { provider: string }) => b.provider === 'openrouter').status).toBe('not_configured');
+      const bad = await call('PUT', '/api/v1/keys/fal/billing', { key: 'not-an-admin-key' });
+      expect(bad.statusCode).toBe(400);
+      const set = await call('PUT', '/api/v1/keys/fal/billing', { key: 'fal-admin-key-1234' });
+      expect(set.statusCode).toBe(200);
+      expect(set.json()).toMatchObject({ status: 'ok', balanceUsd: 7.42, billingKey: '••••1234' });
+      expect(JSON.stringify((await call('GET', '/api/v1/keys')).json())).not.toContain('fal-admin-key');
+      const removed = await call('DELETE', '/api/v1/keys/fal/billing');
+      expect(removed.json()).toMatchObject({ status: 'needs_billing_key', billingKey: null });
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('exposes OpenAPI docs and meta', async () => {

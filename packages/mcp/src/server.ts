@@ -130,9 +130,12 @@ export function createSprixyMcpServer(client: SprixyClient, opts: SprixyMcpOptio
 
   server.registerTool('sprixy_get_usage', {
     title: 'Usage & budgets',
-    description: 'Spending today / this month, per provider and model, and configured budgets & limits.',
+    description: 'Spending today / this month, per provider and model, configured budgets & limits, and the remaining prepaid balance of each provider (when the provider exposes it).',
     inputSchema: { days: z.number().int().min(1).max(365).optional() },
-  }, guard(async ({ days }) => ({ content: [json(await client.usage(days ?? 30))] })));
+  }, guard(async ({ days }) => {
+    const [usage, balances] = await Promise.all([client.usage(days ?? 30), client.request<{ items: unknown[] }>('GET', '/api/v1/providers/balance').catch(() => ({ items: [] }))]);
+    return { content: [json({ ...(usage as object), balances: balances.items })] };
+  }));
 
   server.registerTool('sprixy_get_capabilities', {
     title: 'Processing ops, palettes & formats',

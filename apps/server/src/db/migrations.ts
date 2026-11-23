@@ -165,4 +165,8 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE generations ADD COLUMN webhook_url TEXT;
   ALTER TABLE user_settings ADD COLUMN webhook_secret TEXT;
   `,
+  /* 3 — optional read-only billing key per provider (e.g. a fal.ai ADMIN key, used only to read the balance) */ `
+  ALTER TABLE provider_keys ADD COLUMN billing_secret_enc TEXT;
+  ALTER TABLE provider_keys ADD COLUMN billing_last4 TEXT;
+  `,
 ];

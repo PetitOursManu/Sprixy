@@ -115,7 +115,13 @@ export interface ProviderAdapter {
   estimate(model: ModelDef, req: TaskRequest, key?: string): Promise<CostEstimate>;
   run(model: ModelDef, req: TaskRequest, ctx: RunContext): Promise<TaskResult>;
   resume?(model: ModelDef, handle: ResumeHandle, req: TaskRequest, ctx: RunContext): Promise<TaskResult>;
+  /** Remaining prepaid balance, when the provider exposes it to this key. */
+  getBalance?(key: string): Promise<BalanceCheck>;
 }
+
+export type BalanceCheck =
+  | { ok: true; usd: number; detail?: string }
+  | { ok: false; reason: 'forbidden' | 'unavailable'; message: string };
 
 export function megapixels(w: number, h: number): number {
   return Math.ceil(((w * h) / 1_000_000) * 100) / 100;

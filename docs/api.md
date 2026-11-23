@@ -79,6 +79,13 @@ const expected = crypto.createHmac('sha256', SECRET).update(`${req.headers['x-sp
 const ok = req.headers['x-sprixy-signature'] === `sha256=${expected}`;
 ```
 
+## Provider balance
+
+`GET /api/v1/providers/balance` returns the remaining prepaid balance of each provider (`status`: `ok`, `needs_billing_key`,
+`unavailable`, `not_configured`), cached 60 s (`?fresh=true` to refresh) and refreshed after every job. fal.ai only
+shows billing to ADMIN-scope keys: store one with `PUT /api/v1/keys/fal/billing {"key": "…"}` — it is checked, encrypted,
+and used only to read the balance (`DELETE` removes it). OpenRouter reports account credits or the key's remaining limit.
+
 ## Free endpoints (no AI call)
 
 | Endpoint | Purpose |

@@ -88,6 +88,30 @@ export function openRouterAdapter(): ProviderAdapter {
       return { ok: true, message: 'Key accepted by OpenRouter', info: { label: body.data?.label, limit: body.data?.limit, remaining: body.data?.limit_remaining, usage: body.data?.usage, freeTier: body.data?.is_free_tier } };
     },
 
+    async getBalance(key) {
+      const headers = { Authorization: `Bearer ${key}` };
+      try {
+        // Account credits (total purchased − total used).
+        const res = await fetch(`${API}/credits`, { headers, signal: AbortSignal.timeout(8000) });
+        if (res.ok) {
+          const b = (await res.json()) as { data?: { total_credits?: number; total_usage?: number } };
+          if (typeof b.data?.total_credits === 'number' && typeof b.data.total_usage === 'number') {
+            return { ok: true, usd: Math.max(0, b.data.total_credits - b.data.total_usage) };
+          }
+        }
+        // Fallback: the key's own spending limit, when one is set.
+        const k = await fetch(`${API}/key`, { headers, signal: AbortSignal.timeout(8000) });
+        if (k.status === 401 || k.status === 403) return { ok: false, reason: 'forbidden', message: 'OpenRouter rejected this key.' };
+        if (k.ok) {
+          const d = (await k.json()) as { data?: { limit_remaining?: number | null } };
+          if (typeof d.data?.limit_remaining === 'number') return { ok: true, usd: d.data.limit_remaining, detail: 'key limit' };
+        }
+        return { ok: false, reason: 'unavailable', message: 'OpenRouter did not return a balance for this key' };
+      } catch (e) {
+        return { ok: false, reason: 'unavailable', message: (e as Error).message };
+      }
+    },
+
     async listModels() {
       if (modelCache && Date.now() - modelCache.at < 3600_000) return modelCache.models;
       try {

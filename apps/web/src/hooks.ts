@@ -32,6 +32,17 @@ export function useUsageSummary() {
   return useQuery({ queryKey: ['usage', 30], queryFn: () => get<UsageSummary>('/api/v1/usage?days=30'), staleTime: 30_000 });
 }
 
+export interface Balance {
+  provider: string; name: string; configured: boolean;
+  status: 'ok' | 'needs_billing_key' | 'unavailable' | 'not_supported' | 'not_configured';
+  balanceUsd: number | null; detail?: string; message?: string; billingKey: string | null; checkedAt: number;
+}
+
+/** Remaining prepaid balance per provider (server caches 60 s; refreshed after jobs finish). */
+export function useBalances() {
+  return useQuery({ queryKey: ['balance'], queryFn: () => get<{ items: Balance[] }>('/api/v1/providers/balance'), staleTime: 60_000, refetchInterval: 120_000 });
+}
+
 export function useLoras(projectId?: string) {
   return useQuery({ queryKey: ['loras', projectId ?? 'all'], queryFn: () => get<{ items: Lora[] }>(`/api/v1/loras${qs({ projectId })}`) });
 }
@@ -57,6 +68,7 @@ export function useActiveJobs(projectId?: string) {
       void qc.invalidateQueries({ queryKey: ['asset'] });
       void qc.invalidateQueries({ queryKey: ['generations'] });
       void qc.invalidateQueries({ queryKey: ['usage'] });
+      void qc.invalidateQueries({ queryKey: ['balance'] });
       void qc.invalidateQueries({ queryKey: ['loras'] });
       void qc.invalidateQueries({ queryKey: ['projects'] });
     }

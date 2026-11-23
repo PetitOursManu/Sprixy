@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth';
 import { Icon, Spinner, StatusLed } from './components/ui';
-import { useActiveJobs, useProjects, useUsageSummary } from './hooks';
+import { useActiveJobs, useBalances, useProjects, useUsageSummary } from './hooks';
 import { fmtUsd } from './api';
 import { AuthPage } from './pages/AuthPage';
 import { ProjectsPage } from './pages/ProjectsPage';
@@ -17,6 +17,9 @@ import { DatasetsPage, DatasetPage } from './pages/DatasetsPage';
 import { UsagePage } from './pages/UsagePage';
 import { SettingsPage } from './pages/SettingsPage';
 
+/** Below this, the header balance turns orange. */
+const LOW_BALANCE = 1;
+
 const EditorPage = lazy(() => import('./pages/EditorPage'));
 
 function Shell({ children }: { children: ReactNode }) {
@@ -24,6 +27,7 @@ function Shell({ children }: { children: ReactNode }) {
   const projects = useProjects();
   const jobs = useActiveJobs();
   const usage = useUsageSummary();
+  const balances = useBalances();
   const [open, setOpen] = useState(false);
   const loc = useLocation();
   const active = jobs.data?.items ?? [];
@@ -39,6 +43,15 @@ function Shell({ children }: { children: ReactNode }) {
         <span className="tagline hide-mobile">Your game asset workbench</span>
         <div className="grow" />
         {active.length > 0 && <Link to="/jobs" className="pill" style={{ textDecoration: 'none' }}><StatusLed status="running" /> {active.length} job{active.length > 1 ? 's' : ''} running</Link>}
+        {(balances.data?.items ?? []).filter((b) => b.configured && b.status !== 'not_supported').map((b) => (
+          b.status === 'ok' && b.balanceUsd !== null ? (
+            <Link key={b.provider} to="/settings" className={`pill balance ${b.balanceUsd < LOW_BALANCE ? 'low' : ''}`} title={`${b.name} balance${b.detail ? ` (${b.detail})` : ''} · checked ${new Date(b.checkedAt).toLocaleTimeString()}`}>
+              <Icon name="wallet" size={14} /><span className="hide-mobile">{b.name}</span><strong>{fmtUsd(b.balanceUsd, 2)}</strong>
+            </Link>
+          ) : b.status === 'needs_billing_key' ? (
+            <Link key={b.provider} to="/settings" className="pill balance muted hide-mobile" title={b.message}><Icon name="wallet" size={14} />{b.name} balance: add a billing key</Link>
+          ) : null
+        ))}
         <span className="pill hide-mobile"><span className="led" style={{ background: 'var(--cyan)' }} /> Self-hosted</span>
         <span className="avatar" title={user?.email}>{initial}</span>
         <button className="btn ghost icon mobile-only" style={{ position: 'fixed', top: 11, right: 10, zIndex: 30 }} onClick={(e) => { e.stopPropagation(); setOpen(!open); }} aria-label="Menu"><Icon name="menu" /></button>

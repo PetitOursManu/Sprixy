@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { requireUser } from '../auth.js';
-import { listKeys, saveKey, deleteKey, revalidateKey } from '../services/keys.js';
+import { listKeys, saveKey, deleteKey, revalidateKey, getBalances, setBillingKey } from '../services/keys.js';
 import { getBudget, setBudget, usageSummary } from '../services/budget.js';
 
 const provider = z.enum(['fal', 'openrouter']);
@@ -27,6 +27,23 @@ export async function accountRoutes(app: FastifyInstance) {
     deleteKey(requireUser(req).id, req.params.provider);
     return { ok: true };
   });
+
+  r.get('/api/v1/providers/balance', {
+    schema: {
+      tags: ['keys'], summary: 'Remaining prepaid balance per provider (cached 60 s; fresh=true forces a refresh)',
+      querystring: z.object({ fresh: z.enum(['true', 'false', '1', '0']).optional() }),
+    },
+  }, async (req) => ({ items: await getBalances(requireUser(req).id, { fresh: req.query.fresh === 'true' || req.query.fresh === '1' }) }));
+
+  r.put('/api/v1/keys/:provider/billing', {
+    schema: {
+      tags: ['keys'], summary: 'Optional read-only billing key, used only to read the balance (fal.ai: an ADMIN-scope key). Checked, then encrypted.',
+      params: z.object({ provider }),
+      body: z.object({ key: z.string().min(8).max(500) }),
+    },
+  }, async (req) => setBillingKey(requireUser(req).id, req.params.provider, req.body.key));
+
+  r.delete('/api/v1/keys/:provider/billing', { schema: { tags: ['keys'], summary: 'Remove the billing key', params: z.object({ provider }) } }, async (req) => setBillingKey(requireUser(req).id, req.params.provider, null));
 
   r.get('/api/v1/usage', {
     schema: { tags: ['usage'], summary: 'Spending & generation counts (per day, provider, model, task) with budget status', querystring: z.object({ days: z.coerce.number().int().min(1).max(365).default(30) }) },

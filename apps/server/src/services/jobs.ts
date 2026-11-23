@@ -12,7 +12,7 @@ import { decodeImage, encodePng, fetchBinary, flattenOnColor } from '../lib/imag
 import { getModel, getProvider, DEFAULT_MODELS } from '../providers/registry.js';
 import { PRESET_LORAS, SPRITESHEET_LORA_ID } from '../providers/catalog.js';
 import type { ModelDef, TaskRequest, TaskResult, CostEstimate, Capability, LoraRef, ImageInput } from '../providers/types.js';
-import { getSecret } from './keys.js';
+import { getSecret, invalidateBalances } from './keys.js';
 import { assertWithinBudget } from './budget.js';
 import {
   GENERATABLE_KINDS, KIND_SPECS, KEY_BG, buildPrompt, generationSize, normalizeArtDirection, paletteSteps, paletteOf,
@@ -871,6 +871,7 @@ async function execute(id: string, userId: string, plan: Plan, resume?: { reques
     clearTimeout(timeout);
     running.delete(id);
     const hook = db.get<{ webhook_url: string | null }>('SELECT webhook_url FROM generations WHERE id = ?', id)?.webhook_url;
+    invalidateBalances(userId);
     if (hook) void deliverWebhook(userId, id, hook, getGeneration(userId, id)).catch(() => undefined);
   }
 }

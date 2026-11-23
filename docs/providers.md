@@ -28,6 +28,12 @@ available; otherwise the list prices below are used (marked “list price” in 
 Prices change: always rely on the in-app estimate (which shows whether it comes from the live pricing API) and on your
 fal dashboard.
 
+### Balance in the top bar
+
+Sprixy shows the remaining fal.ai credit in its top bar (orange under $1). fal.ai only exposes billing to **ADMIN**-scope
+keys, so a regular API key shows “add a billing key”: create an ADMIN key in the fal.ai dashboard and paste it under
+**Settings → Provider keys → Balance**. It is stored encrypted and used only to read the balance, never to run jobs.
+
 ## OpenRouter
 
 Image-capable models are discovered dynamically (`GET /api/v1/models?output_modalities=image`, cached 1 h) and appear

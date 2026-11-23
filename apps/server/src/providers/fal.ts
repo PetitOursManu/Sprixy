@@ -229,6 +229,22 @@ export function falAdapter(pollMs = 1500): ProviderAdapter {
       return FAL_MODELS;
     },
 
+    async getBalance(key) {
+      try {
+        const res = await fetch(`${PLATFORM}/account/billing?expand=credits`, { headers: auth(key), signal: AbortSignal.timeout(8000) });
+        if (res.status === 401 || res.status === 403) {
+          return { ok: false, reason: 'forbidden', message: 'fal.ai only shows the balance to ADMIN-scope keys. Add a read-only billing key (an ADMIN key) in Settings.' };
+        }
+        if (!res.ok) return { ok: false, reason: 'unavailable', message: `fal.ai billing API returned HTTP ${res.status}` };
+        const b = (await res.json()) as { credits?: { current_balance?: number; currency?: string } };
+        const v = b.credits?.current_balance;
+        if (typeof v !== 'number') return { ok: false, reason: 'unavailable', message: 'fal.ai did not return a balance' };
+        return { ok: true, usd: v, detail: b.credits?.currency && b.credits.currency !== 'USD' ? b.credits.currency : undefined };
+      } catch (e) {
+        return { ok: false, reason: 'unavailable', message: (e as Error).message };
+      }
+    },
+
     async estimate(model, req, key): Promise<CostEstimate> {
       const endpoint = resolveEndpoint(model, req);
       const live = await livePrice(endpoint, key);
