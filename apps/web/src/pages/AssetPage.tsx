@@ -25,7 +25,7 @@ export function AssetPage() {
   const [bg, setBg] = useState<'checker' | 'dark' | 'light'>('checker');
   const [preview, setPreview] = useState<string | null>(null);
 
-  useEffect(() => { setView(a?.frames && a.frames.length > 1 ? 'anim' : 'image'); setPreview(null); }, [a?.id, a?.frames]);
+  useEffect(() => { setView(a?.kind === 'animation' && a.frames && a.frames.length > 1 ? 'anim' : 'image'); setPreview(null); }, [a?.id, a?.kind, a?.frames]);
 
   const update = useMutation({
     mutationFn: (body: Record<string, unknown>) => patch<Asset>(`/api/v1/assets/${id}`, body),

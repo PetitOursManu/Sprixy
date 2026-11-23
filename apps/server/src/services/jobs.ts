@@ -155,6 +155,12 @@ async function resultImages(res: TaskResult, signal: AbortSignal): Promise<{ img
   return out;
 }
 
+/** Remove the key-colored background an AI model painted (flood fill + key-tinted shadows / fringes). */
+export function cutKey(img: RGBAImage, tolerance = 16, global = false): RGBAImage {
+  const key = estimateBackgroundColor(img);
+  return removeKeyColorRegions(removeBackgroundFlood(img, { tolerance, global }), { key });
+}
+
 export interface ToSpriteOptions {
   target: { width: number; height: number };
   transparent: boolean;
@@ -171,9 +177,7 @@ export function toSprite(raw: RGBAImage, o: ToSpriteOptions): RGBAImage {
   if (o.transparent && o.post.removeBackground === 'flood') {
     // Models never paint the exact key color: measure it, flood-fill it, then clear key-tinted
     // shadows and background enclosed between limbs.
-    const key = estimateBackgroundColor(img);
-    img = removeBackgroundFlood(img, { tolerance: 16 });
-    img = removeKeyColorRegions(img, { key });
+    img = cutKey(img, 16);
   }
   if (o.seamless) img = makeSeamless(img);
   if (o.post.pixelize) {
@@ -452,7 +456,7 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
       const ref = await pngInput(referenceFrom(padded, 768));
       const wanFrames = Math.max(17, Math.min(81, Math.round((spec.frames / spec.fps) * 16)));
       const numFrames = wanFrames - ((wanFrames - 1) % 4);
-      const finalPrompt = `${spec.action}. The pixel art character from the image performs this action in place, centered in frame, static camera, no camera movement, no zoom, no background change, flat solid ${KEY_BG.name} background, same character design and colors, crisp pixel art, smooth seamless loop`;
+      const finalPrompt = `${spec.action}. The pixel art character from the image performs this action in place, keeping exactly the same facing direction and viewing angle for the whole clip (no turning, no rotation), centered in frame, static camera, no camera movement, no zoom, no background change, flat solid ${KEY_BG.name} background, same character design and colors, crisp pixel art, smooth seamless loop`;
       const req: TaskRequest = { task: 'animate', prompt: finalPrompt, image: ref, numFrames, fps: 16, resolution: spec.resolution ?? '480p', negativePrompt: 'camera motion, zoom, blurry, background scenery, text, watermark' };
       const calls = [{ model, req }];
       return {
@@ -465,7 +469,7 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
           const video = await fetchBinary(res.video.url, { signal: ctx.signal });
           const raw = await extractFrames(video, spec.frames, { sampleFps: 16, signal: ctx.signal, skipStart: 1 });
           ctx.progress('Pixelizing frames…');
-          let frames = raw.map((f) => paletteFix(pixelize(removeBackgroundFlood(f, { tolerance: 18 }), { width: padW, height: padH })));
+          let frames = raw.map((f) => paletteFix(pixelize(cutKey(f, 18), { width: padW, height: padH })));
           // Crop every frame to the union of their content so the loop stays aligned.
           let x0 = padW, y0 = padH, x1 = 0, y1 = 0;
           for (const f of frames) { const b = contentBounds(f); if (b) { x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y); x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h); } }
@@ -494,7 +498,7 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
       async execute(ctx) {
         const [out] = await resultImages(await ctx.call(model, req), ctx.signal);
         ctx.progress('Slicing frames…');
-        const cut = removeBackgroundFlood(out.img, { tolerance: 16, global: true });
+        const cut = cutKey(out.img, 16, true);
         let parts = autoSlice(cut, { mergeDistance: 10, minArea: 64 }).images;
         if (parts.length < 2) parts = sliceGrid(cut, { columns: cols, rows, skipEmpty: true }).images;
         parts = parts.slice(0, n);
