@@ -190,3 +190,33 @@ describe('Sprixy API', () => {
     expect(unauth.statusCode).toBe(401);
   });
 });
+
+describe('webhooks', () => {
+  it('delivers a signed generation.finished event', async () => {
+    const http = await import('node:http');
+    const { createHmac } = await import('node:crypto');
+    const { deliverWebhook, getWebhookSecret } = await import('../src/services/webhooks.js');
+    const { getDb } = await import('../src/db/index.js');
+    const received: { headers: Record<string, string | string[] | undefined>; body: string }[] = [];
+    const srv = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => { received.push({ headers: req.headers, body }); res.end('ok'); });
+    });
+    await new Promise<void>((r) => srv.listen(0, '127.0.0.1', () => r()));
+    const port = (srv.address() as { port: number }).port;
+    const user = getDb().get<{ id: string }>('SELECT id FROM users LIMIT 1')!;
+    getDb().run(`INSERT INTO generations (id,user_id,task,model_id,provider,status,created_at) VALUES ('gen_hook',?,'generate','fal:z-image-turbo','fal','succeeded',?)`, user.id, Date.now());
+    const secret = getWebhookSecret(user.id);
+    expect((await call('GET', '/api/v1/webhooks/secret')).json().secret).toBe(secret);
+    await deliverWebhook(user.id, 'gen_hook', `http://127.0.0.1:${port}/hook`, { id: 'gen_hook', status: 'succeeded' });
+    srv.close();
+    expect(received).toHaveLength(1);
+    const h = received[0].headers;
+    const expected = createHmac('sha256', secret).update(`${h['x-sprixy-timestamp']}.${received[0].body}`).digest('hex');
+    expect(h['x-sprixy-signature']).toBe(`sha256=${expected}`);
+    expect(JSON.parse(received[0].body)).toMatchObject({ event: 'generation.finished', data: { id: 'gen_hook' } });
+    const stored = JSON.parse(getDb().get<{ result_json: string }>(`SELECT result_json FROM generations WHERE id = 'gen_hook'`)!.result_json);
+    expect(stored.webhook.result).toBe('HTTP 200');
+  });
+});

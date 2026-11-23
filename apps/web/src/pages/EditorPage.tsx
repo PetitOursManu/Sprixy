@@ -8,6 +8,7 @@ import { useStore } from '../editor/useStore';
 import {
   compositeFrame, cropRGBA, deserializeDoc, loadImageRGBA, newDoc, rgbaToPngDataUrl, serializeDoc, uniqueColors, type Doc,
 } from '../editor/doc';
+import { AiEditPanel } from '../editor/AiEditPanel';
 import '../editor/editor.css';
 
 interface Loaded {
@@ -130,6 +131,7 @@ function Editor({ loaded }: { loaded: Loaded }) {
   useStore(store);
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error' | 'info'; text: string } | null>(loaded.notice ? { kind: 'info', text: loaded.notice } : null);
   const [sideOpen, setSideOpen] = useState(false);
   const savingRef = useRef(false);
@@ -258,6 +260,7 @@ function Editor({ loaded }: { loaded: Loaded }) {
         <div className="row ed-group ed-right">
           <a className="btn sm ghost" href={`/api/v1/assets/${asset.id}/export?format=png`} download title="Download the last saved version">PNG</a>
           {(store.doc.frames.length > 1 || asset.frames?.length) && <a className="btn sm ghost" href={`/api/v1/assets/${asset.id}/export?format=gif&scale=4`} download title="Download the last saved version">GIF</a>}
+          <button className={`btn sm ${aiOpen ? 'on' : ''}`} onClick={() => setAiOpen((v) => !v)} title="Repaint the selected region with AI (paid, palette-locked)">✦ AI edit</button>
           <button className="btn sm ed-side-toggle" onClick={() => setSideOpen((v) => !v)}>Panels</button>
           <button className="btn sm" disabled={saving} onClick={() => void save(true)} title="Save as a new variant (Ctrl+Shift+S)">Save as variant</button>
           <button className="btn sm primary" disabled={saving || !store.dirty} onClick={() => void save(false)} title="Save (Ctrl+S)">{saving ? 'Saving…' : 'Save'}</button>
@@ -272,7 +275,8 @@ function Editor({ loaded }: { loaded: Loaded }) {
           </span>
         )}
       </div>
-      <div className="ed-body">
+      <div className="ed-body" style={{ position: 'relative' }}>
+        {aiOpen && <AiEditPanel store={store} assetId={asset.id} onClose={() => setAiOpen(false)} onMessage={(kind, text) => setMessage({ kind, text })} />}
         <ToolColumn store={store} />
         <EditorCanvas store={store} />
         <aside className="ed-side">

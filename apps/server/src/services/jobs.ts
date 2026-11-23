@@ -15,12 +15,13 @@ import type { ModelDef, TaskRequest, TaskResult, CostEstimate, Capability, LoraR
 import { getSecret } from './keys.js';
 import { assertWithinBudget } from './budget.js';
 import {
-  GENERATABLE_KINDS, KIND_SPECS, KEY_BG, buildPrompt, generationSize, normalizeArtDirection, paletteSteps,
+  GENERATABLE_KINDS, KIND_SPECS, KEY_BG, buildPrompt, generationSize, normalizeArtDirection, paletteSteps, paletteOf,
   type ArtDirection, type GeneratableKind, type PostProcessOptions, type AssetKind,
 } from './artDirection.js';
 import { assertProject, createAsset, getAssetRow, loadAssetImage, loadSourceImage, imagePalette, type AssetDto } from './assets.js';
 import { extractFrames } from './video.js';
 import { buildTrainingZip } from './datasets.js';
+import { deliverWebhook } from './webhooks.js';
 import { config } from '../config.js';
 
 // ───────────────────────────── Schemas ─────────────────────────────
@@ -90,6 +91,18 @@ export const jobSpecSchema = z.discriminatedUnion('task', [
     modelId: z.string().optional(),
   }),
   z.object({
+    task: z.literal('inpaint'),
+    assetId: z.string(),
+    prompt: z.string().min(1).max(1000),
+    /** Region to repaint, in asset pixels. Everything outside stays byte-identical. */
+    rect: z.object({ x: z.number().int().min(0), y: z.number().int().min(0), w: z.number().int().min(1), h: z.number().int().min(1) }),
+    /** Current pixels (PNG data URI) when editing unsaved work in the editor; defaults to the stored asset. */
+    image: z.string().startsWith('data:image/png;base64,').optional(),
+    modelId: z.string().optional(),
+    lockPalette: z.boolean().default(true),
+    seed: z.number().int().min(0).optional(),
+  }),
+  z.object({
     task: z.literal('train'),
     name: z.string().min(1).max(120),
     datasetId: z.string(),
@@ -152,6 +165,10 @@ async function resultImages(res: TaskResult, signal: AbortSignal): Promise<{ img
   }
   if (!out.length) throw new Error('The provider returned no image');
   return out;
+}
+
+function getAssetFrames(row: { frames_json: string | null }): Frame[] | null {
+  return parseJson<Frame[] | null>(row.frames_json, null);
 }
 
 /** Remove the key-colored background an AI model painted (flood fill + key-tinted shadows / fringes). */
@@ -518,6 +535,59 @@ export async function planJob(userId: string, spec: JobSpec): Promise<Plan> {
     };
   }
 
+  if (spec.task === 'inpaint') {
+    const base = getAssetRow(userId, spec.assetId);
+    const ad = projectArtDirection(userId, base.project_id);
+    const model = await pickModel(spec.modelId, [ad.models.edit], 'edit');
+    const img = spec.image ? await decodeImage(await fetchBinary(spec.image)) : await loadAssetImage(base);
+    const r = { x: Math.min(spec.rect.x, img.width - 1), y: Math.min(spec.rect.y, img.height - 1), w: spec.rect.w, h: spec.rect.h };
+    r.w = Math.max(1, Math.min(r.w, img.width - r.x));
+    r.h = Math.max(1, Math.min(r.h, img.height - r.y));
+    // Context around the selection so the model understands what it is editing.
+    const m = Math.max(4, Math.round(Math.max(r.w, r.h) * 0.5));
+    const ctxRect = { x: Math.max(0, r.x - m), y: Math.max(0, r.y - m), w: 0, h: 0 };
+    ctxRect.w = Math.min(img.width, r.x + r.w + m) - ctxRect.x;
+    ctxRect.h = Math.min(img.height, r.y + r.h + m) - ctxRect.y;
+    const context = crop(img, ctxRect);
+    const hadTransparency = context.data.some((v, i) => i % 4 === 3 && v < 128);
+    const ref = await pngInput(referenceFrom(context));
+    const gsize = generationSize({ width: ctxRect.w, height: ctxRect.h });
+    const finalPrompt = [
+      `Edit this pixel art image: ${spec.prompt}`,
+      'keep everything else identical, same pixel art style, same pixel size, same proportions and same color palette',
+      hadTransparency ? `keep the plain flat ${KEY_BG.name} (${KEY_BG.hex}) background` : '',
+    ].filter(Boolean).join(', ');
+    const req: TaskRequest = { task: 'edit', prompt: finalPrompt, images: [ref], width: gsize.width, height: gsize.height, numImages: 1, seed: spec.seed };
+    // New content may need colors the sprite does not use yet: prefer the project palette when there is one.
+    const sourcePalette = spec.lockPalette ? (paletteOf(ad).length ? paletteOf(ad) : imagePalette(img)) : undefined;
+    const calls = [{ model, req }];
+    return {
+      task: 'inpaint', projectId: base.project_id, kind: base.kind, model, prompt: spec.prompt, finalPrompt, warnings, calls,
+      estimate: await sumEstimates(userId, calls),
+      async execute(ctx) {
+        const [out] = await resultImages(await ctx.call(model, req), ctx.signal);
+        ctx.progress('Re-pixelizing the edited region…');
+        let patch = hadTransparency ? cutKey(out.img, 16) : out.img;
+        patch = pixelize(patch, { width: ctxRect.w, height: ctxRect.h });
+        patch = sourcePalette?.length ? applyPalette(patch, paletteFromHex(sourcePalette)) : runPipeline(patch, paletteSteps(ad, DEFAULT_POST));
+        if (hadTransparency) patch = hardenAlpha(patch);
+        // Composite strictly inside the selection.
+        const result = { width: img.width, height: img.height, data: new Uint8ClampedArray(img.data) };
+        for (let y = 0; y < r.h; y++) for (let x = 0; x < r.w; x++) {
+          const si = ((r.y - ctxRect.y + y) * patch.width + (r.x - ctxRect.x + x)) * 4;
+          const di = ((r.y + y) * img.width + (r.x + x)) * 4;
+          for (let c = 0; c < 4; c++) result.data[di + c] = patch.data[si + c];
+        }
+        const asset = await createAsset({
+          userId, projectId: base.project_id, kind: base.kind, name: `${base.name} · edit: ${spec.prompt}`.slice(0, 120), image: result, source: out.raw,
+          parentId: base.id, generationId: ctx.genId, frames: spec.image ? null : getAssetFrames(base),
+          meta: { prompt: spec.prompt, modelId: model.id, inpaintRect: r, palette: imagePalette(result) }, tags: ['ai-edit'],
+        });
+        return { assets: [asset], extra: { rect: r } };
+      },
+    };
+  }
+
   if (spec.task === 'removeBg') {
     const base = getAssetRow(userId, spec.assetId);
     const ad = projectArtDirection(userId, base.project_id);
@@ -634,17 +704,17 @@ export async function estimateJob(userId: string, spec: JobSpec) {
 }
 
 /** Validate, budget-check, persist and start a job. Returns immediately (poll the generation). */
-export async function createJob(userId: string, spec: JobSpec) {
+export async function createJob(userId: string, spec: JobSpec, opts: { webhookUrl?: string } = {}) {
   const plan = await planJob(userId, spec);
   for (const c of plan.calls) getSecret(userId, c.model.provider); // fail fast if a key is missing
   assertWithinBudget(userId, plan.estimate.usd);
   const id = newId('gen_');
   const db = getDb();
   db.run(
-    `INSERT INTO generations (id,user_id,project_id,task,kind,model_id,provider,endpoint,prompt,final_prompt,params_json,status,estimated_cost,cost_source,result_json,created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO generations (id,user_id,project_id,task,kind,model_id,provider,endpoint,prompt,final_prompt,params_json,status,estimated_cost,cost_source,result_json,created_at,webhook_url)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     id, userId, plan.projectId, plan.task, plan.kind, plan.model.id, plan.model.provider, plan.model.endpoint, plan.prompt, plan.finalPrompt,
-    JSON.stringify(spec), 'queued', plan.estimate.usd, plan.estimate.source, JSON.stringify({ warnings: plan.warnings }), Date.now(),
+    JSON.stringify(spec), 'queued', plan.estimate.usd, plan.estimate.source, JSON.stringify({ warnings: plan.warnings }), Date.now(), opts.webhookUrl ?? null,
   );
   void execute(id, userId, plan);
   return getGeneration(userId, id);
@@ -699,6 +769,8 @@ async function execute(id: string, userId: string, plan: Plan, resume?: { reques
   } finally {
     clearTimeout(timeout);
     running.delete(id);
+    const hook = db.get<{ webhook_url: string | null }>('SELECT webhook_url FROM generations WHERE id = ?', id)?.webhook_url;
+    if (hook) void deliverWebhook(userId, id, hook, getGeneration(userId, id)).catch(() => undefined);
   }
 }
 

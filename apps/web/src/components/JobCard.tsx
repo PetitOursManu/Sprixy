@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fmtUsd, post, timeAgo, type Generation } from '../api';
 import { Icon, Spinner, StatusLed, useToast } from './ui';
 
-const TASK_LABEL: Record<string, string> = { generate: 'Generate', variant: 'Variant', directions: 'Directions', animate: 'Animate', removeBg: 'AI cutout', train: 'LoRA training' };
+const TASK_LABEL: Record<string, string> = { generate: 'Generate', variant: 'Variant', directions: 'Directions', animate: 'Animate', removeBg: 'AI cutout', inpaint: 'AI edit', train: 'LoRA training' };
 
 export function JobCard({ g, compact }: { g: Generation; compact?: boolean }) {
   const qc = useQueryClient();

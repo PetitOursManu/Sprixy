@@ -14,6 +14,7 @@ import { hasKey, getSecret } from '../services/keys.js';
 import { jobSpecSchema, createJob, estimateJob, getGeneration, listGenerations, cancelJob } from '../services/jobs.js';
 import { getAssetRow, assertProject } from '../services/assets.js';
 import { buildExternalTrainingExport } from '../services/datasets.js';
+import { getWebhookSecret } from '../services/webhooks.js';
 
 const idParam = z.object({ id: z.string() });
 
@@ -62,11 +63,12 @@ export async function aiRoutes(app: FastifyInstance) {
   r.post('/api/v1/generations', {
     schema: {
       tags: ['generations'],
-      summary: 'Start a job: generate | variant | directions | animate | removeBg | train. Returns immediately; poll GET /generations/:id',
-      body: jobSpecSchema,
+      summary: 'Start a job: generate | variant | directions | animate | removeBg | inpaint | train. Returns 202 immediately; poll GET /generations/:id or pass webhookUrl',
+      body: jobSpecSchema.and(z.object({ webhookUrl: z.string().url().regex(/^https?:\/\//).max(2000).optional().describe('Called with the finished generation (HMAC-signed, see /webhooks/secret)') })),
     },
   }, async (req, reply) => {
-    const g = await createJob(requireUser(req).id, req.body);
+    const { webhookUrl, ...spec } = req.body as typeof req.body & { webhookUrl?: string };
+    const g = await createJob(requireUser(req).id, spec as typeof req.body, { webhookUrl });
     reply.code(202);
     return g;
   });
@@ -79,6 +81,12 @@ export async function aiRoutes(app: FastifyInstance) {
   }, async (req) => listGenerations(requireUser(req).id, req.query));
 
   r.get('/api/v1/generations/:id', { schema: { tags: ['generations'], summary: 'Generation status, cost and output assets', params: idParam } }, async (req) => getGeneration(requireUser(req).id, req.params.id));
+
+  r.get('/api/v1/webhooks/secret', { schema: { tags: ['generations'], summary: 'Your webhook signing secret (created on first call)', querystring: z.object({ rotate: z.coerce.boolean().optional() }) } }, async (req) => {
+    const u = requireUser(req);
+    if (req.query.rotate && req.authKind !== 'session') throw badRequest('Rotate the secret from a signed-in browser session');
+    return { secret: getWebhookSecret(u.id, !!req.query.rotate), signature: 'X-Sprixy-Signature: sha256=hex(HMAC_SHA256(secret, X-Sprixy-Timestamp + "." + rawBody))' };
+  });
 
   r.post('/api/v1/generations/:id/cancel', { schema: { tags: ['generations'], summary: 'Cancel a running job', params: idParam } }, async (req) => cancelJob(requireUser(req).id, req.params.id));
 

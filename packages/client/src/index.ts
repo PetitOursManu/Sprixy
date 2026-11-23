@@ -19,7 +19,7 @@ export class SprixyError extends Error {
   }
 }
 
-export type JobTask = 'generate' | 'variant' | 'directions' | 'animate' | 'removeBg' | 'train';
+export type JobTask = 'generate' | 'variant' | 'directions' | 'animate' | 'removeBg' | 'inpaint' | 'train';
 
 export interface Generation {
   id: string;

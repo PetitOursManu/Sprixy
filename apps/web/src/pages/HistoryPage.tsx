@@ -31,7 +31,7 @@ export function HistoryPage({ global }: { global?: boolean }) {
             <Segmented value={status} onChange={(v) => { setStatus(v); setPage(0); }} options={[{ value: '', label: 'All' }, { value: 'active', label: 'Active' }, { value: 'succeeded', label: 'Succeeded' }, { value: 'failed', label: 'Failed' }]} />
             <select className="select" style={{ width: 150 }} value={task} onChange={(e) => { setTask(e.target.value); setPage(0); }}>
               <option value="">All tasks</option>
-              {['generate', 'variant', 'directions', 'animate', 'removeBg', 'train'].map((t) => <option key={t} value={t}>{t}</option>)}
+              {['generate', 'variant', 'directions', 'animate', 'removeBg', 'inpaint', 'train'].map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
         </div>

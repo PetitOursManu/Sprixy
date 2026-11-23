@@ -267,6 +267,18 @@ export class EditorStore {
 
   // ── layers ──
   selectLayer(id: string): void { this.commitFloating(); this.layerId = id; this.emit(); }
+  /** Insert a new layer above the active one, holding `pixels` (full canvas size) on the current frame. */
+  addLayerWithPixels(name: string, pixels: Uint8ClampedArray): void {
+    if (pixels.length !== this.doc.width * this.doc.height * 4) throw new Error('Layer size mismatch');
+    this.docChange(`Add layer “${name}”`, () => {
+      const l: Layer = { id: uid('ly'), name, visible: true, opacity: 1 };
+      const idx = this.doc.layers.findIndex((x) => x.id === this.layerId);
+      this.doc.layers.splice(idx + 1, 0, l);
+      for (const f of this.doc.frames) f.cels[l.id] = f === this.frame ? pixels.slice() : emptyCel(this.doc.width, this.doc.height);
+      this.frame.rev++;
+      this.layerId = l.id;
+    });
+  }
   addLayer(): void {
     this.docChange('Add layer', () => {
       const l: Layer = { id: uid('ly'), name: `Layer ${this.doc.layers.length + 1}`, visible: true, opacity: 1 };

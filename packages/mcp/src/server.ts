@@ -186,6 +186,16 @@ export function createSprixyMcpServer(client: SprixyClient, opts: SprixyMcpOptio
     inputSchema: { assetId: z.string(), action: z.string().describe('e.g. "walk cycle", "idle breathing", "sword attack"'), method: z.enum(['video', 'sheet']).optional(), frames: z.number().int().min(2).max(24).optional(), fps: z.number().int().min(2).max(30).optional(), modelId: z.string().optional(), wait: z.boolean().optional() },
   }, guard(async ({ wait, ...spec }) => finish(await client.startJob({ task: 'animate', ...spec }), wait !== false)));
 
+  server.registerTool('sprixy_edit_region', {
+    title: 'AI edit of a region',
+    description: 'Repaint a rectangle of an asset with an edit model (e.g. "replace the sword with a staff"). The result is re-pixelized and palette-locked, and pixels outside the rectangle are guaranteed unchanged. Creates a variant asset.',
+    inputSchema: {
+      assetId: z.string(), prompt: z.string(),
+      x: z.number().int().min(0), y: z.number().int().min(0), width: z.number().int().min(1), height: z.number().int().min(1),
+      modelId: z.string().optional(), lockPalette: z.boolean().optional(), wait: z.boolean().optional(),
+    },
+  }, guard(async ({ wait, x, y, width, height, ...rest }) => finish(await client.startJob({ task: 'inpaint', rect: { x, y, w: width, h: height }, ...rest }), wait !== false)));
+
   server.registerTool('sprixy_remove_background_ai', {
     title: 'AI background removal',
     description: 'Remove a complex background with an AI model (BiRefNet). For flat backgrounds prefer the free sprixy_process_asset with { op: "removeBackground" }.',

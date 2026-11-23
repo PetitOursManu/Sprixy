@@ -161,4 +161,8 @@ export const MIGRATIONS: string[] = [
     created_at INTEGER NOT NULL
   );
   `,
+  /* 2 — job webhooks */ `
+  ALTER TABLE generations ADD COLUMN webhook_url TEXT;
+  ALTER TABLE user_settings ADD COLUMN webhook_secret TEXT;
+  `,
 ];

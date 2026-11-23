@@ -145,7 +145,7 @@ export interface Model {
 export interface Generation {
   id: string;
   projectId: string | null;
-  task: 'generate' | 'variant' | 'directions' | 'animate' | 'removeBg' | 'train';
+  task: 'generate' | 'variant' | 'directions' | 'animate' | 'removeBg' | 'inpaint' | 'train';
   kind: string | null;
   modelId: string;
   provider: string;
