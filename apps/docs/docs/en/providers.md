@@ -1,4 +1,8 @@
-# Providers, models & pricing
+---
+title: Providers, models & pricing
+description: fal.ai and OpenRouter keys, the model catalogue, real-run comparisons, LoRAs and the balance in the top bar.
+audience: [admin]
+---
 
 Sprixy is **BYOK**: each user stores their own provider keys (Settings → Provider keys). Keys are validated against
 the provider, encrypted with AES-256-GCM and never returned to the browser. Generation is billed by the provider on
@@ -17,6 +21,10 @@ available; otherwise the list prices below are used (marked “list price” in 
 | `fal:z-image-turbo-i2i` | `fal-ai/z-image/turbo/image-to-image`, `…/lora` | img2img (variants) | $0.005/MP, LoRA $0.0085/MP |
 | `fal:flux2-klein-4b` | `fal-ai/flux-2/klein/4b`, `/lora`, `/edit`, `/edit/lora` | txt2img, multi-reference edit | $0.005/MP (edit $0.01/MP) |
 | `fal:flux2-klein-9b` | `fal-ai/flux-2/klein/9b`, `/lora`, `/edit`, `/edit/lora` | txt2img, edit, directions | $0.006/MP (edit $0.011/MP in+out) |
+| `fal:flux2-dev` | `fal-ai/flux-2`, `/lora`, `/edit`, `/lora/edit` | 32B: txt2img, edit, FLUX.2 dev LoRAs | $0.012/MP, LoRA $0.021/MP |
+| `fal:flux2-pro` | `fal-ai/flux-2-pro`, `/edit` | txt2img, edit (no LoRA, one image per call) | $0.03/MP processed |
+| `fal:qwen-image-2512` | `fal-ai/qwen-image-2512`, `/lora` | 20B txt2img, Qwen-Image LoRAs | $0.02/MP, LoRA $0.035/MP |
+| `fal:qwen-image-edit-2511` | `fal-ai/qwen-image-edit-2511`, `/lora` | 20B edit, character sheets | $0.03/MP, LoRA $0.035/MP |
 | `fal:flux1-dev-lora` | `fal-ai/flux-lora` | txt2img with FLUX.1 LoRAs | ≈ $0.035/MP |
 | `fal:wan-2.2-i2v` | `fal-ai/wan/v2.2-a14b/image-to-video` | animation (frames & fps control) | $0.04–0.08/s (16 fps billing) |
 | `fal:wan-2.6-i2v` | `wan/v2.6/image-to-video` | animation (5 s clips) | $0.10–0.15/s |
@@ -85,7 +93,7 @@ GPU or free notebook GPU time — then use **LoRAs → Import LoRA** with the ma
 Same prompts and seeds, Sprixy art direction (32×32, top-down, Endesga 32), default post-processing. The 64×64 row
 is a free re-conversion of the same AI image.
 
-![Model comparison](images/model-comparison.jpg)
+![Model comparison](../assets/model-comparison.jpg)
 
 | Model | Cost / image | Result |
 | --- | --- | --- |
@@ -99,7 +107,7 @@ useful for reusing an existing FLUX.1 LoRA from Civitai / Hugging Face.
 
 ### Larger models
 
-![Larger models](images/model-comparison-large.jpg)
+![Larger models](../assets/model-comparison-large.jpg)
 
 | Model | Size | Cost / image | Result |
 | --- | --- | --- | --- |
@@ -123,7 +131,7 @@ background, snaps it to the 32×48 grid, applies the palette and creates:
   Godot / Unity / Phaser / Aseprite like any sheet;
 - one looping `walk <direction>` animation per direction.
 
-![Character sheet](images/character-sheet.jpg)
+![Character sheet](../assets/character-sheet.jpg)
 
 The frame size is fixed by the LoRA (32×48). The character keeps its look and colors, but small props (like the
 hammer above) are often only drawn in the attack frames.

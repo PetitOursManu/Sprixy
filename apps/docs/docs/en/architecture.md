@@ -1,4 +1,8 @@
-# Architecture
+---
+title: Architecture
+description: How Sprixy is built: packages, generation pipeline, data model and security.
+audience: [dev]
+---
 
 ```
                  ┌───────────────────────────── apps/server (Fastify) ─────────────────────────────┐

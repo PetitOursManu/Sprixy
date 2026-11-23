@@ -6,7 +6,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import fastifyStatic from '@fastify/static';
 import rateLimit from '@fastify/rate-limit';
 import { serializerCompiler, validatorCompiler, jsonSchemaTransform, hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
@@ -80,8 +80,26 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(tilesetRoutes);
   await app.register(mcpRoutes);
 
-  // Serve the built web UI (single container deployment).
   const here = path.dirname(fileURLToPath(import.meta.url));
+
+  // Documentation (Lumy static site, English + French) at /docs.
+  const docsDir = [config.docsDist, path.resolve(here, '../../docs/dist')].filter((p): p is string => !!p).find((p) => existsSync(path.join(p, 'index.html')));
+  if (docsDir) {
+    app.get('/docs', (_req, reply) => reply.redirect('/docs/', 301));
+    await app.register(fastifyStatic, {
+      root: docsDir,
+      prefix: '/docs/',
+      decorateReply: false,
+      redirect: true,
+      setHeaders: (reply: { header(k: string, v: string): unknown }, filePath: string) => {
+        const p = filePath.split(path.sep).join('/');
+        reply.header('Cache-Control', p.endsWith('.html') || p.endsWith('.md') || p.endsWith('.txt') ? 'no-cache' : p.includes('/_lumy/') ? 'public, max-age=31536000, immutable' : 'public, max-age=86400');
+      },
+    });
+  }
+  const docs404 = docsDir && existsSync(path.join(docsDir, '404.html')) ? readFileSync(path.join(docsDir, '404.html'), 'utf8') : null;
+
+  // Serve the built web UI (single container deployment).
   const candidates = [config.webDist, path.resolve(here, '../../web/dist'), path.resolve(here, '../public')].filter((p): p is string => !!p);
   const webDir = candidates.find((p) => existsSync(path.join(p, 'index.html')));
   if (webDir) {
@@ -90,10 +108,12 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
       wildcard: true,
       setHeaders: (reply: { header(k: string, v: string): unknown }, filePath: string) => {
         // Hashed bundles are immutable; index.html must always be revalidated.
-        reply.header('Cache-Control', filePath.endsWith('index.html') ? 'no-cache' : 'public, max-age=31536000, immutable');
+        const p = filePath.split(path.sep).join('/');
+        reply.header('Cache-Control', p.endsWith('index.html') ? 'no-cache' : p.includes('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=86400');
       },
     });
     app.setNotFoundHandler((req, reply) => {
+      if (docs404 && req.url.startsWith('/docs/')) return reply.code(404).type('text/html; charset=utf-8').send(docs404);
       if (req.method === 'GET' && !req.url.startsWith('/api') && !req.url.startsWith('/mcp')) return reply.header('Cache-Control', 'no-cache').sendFile('index.html');
       return reply.code(404).send({ error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.url} not found` } });
     });

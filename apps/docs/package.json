@@ -1,0 +1,15 @@
+{
+  "name": "@sprixy/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sprixy documentation, built with Lumy (English + French). Served by the Sprixy server at /docs.",
+  "scripts": {
+    "dev": "lumy dev",
+    "build": "lumy build",
+    "check": "lumy check",
+    "translations": "lumy translations"
+  },
+  "devDependencies": {
+    "lumy-docs": "github:PetitOursManu/Lumy"
+  }
+}

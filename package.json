@@ -11,10 +11,12 @@
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @sprixy/server --filter @sprixy/web dev",
-    "build": "pnpm --filter @sprixy/web build && pnpm --filter @sprixy/server build && pnpm --filter @sprixy/mcp build",
+    "build": "pnpm --filter @sprixy/web build && pnpm --filter @sprixy/server build && pnpm --filter @sprixy/mcp build && pnpm --filter @sprixy/docs build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
-    "start": "node apps/server/dist/index.js"
+    "start": "node apps/server/dist/index.js",
+    "docs:dev": "pnpm --filter @sprixy/docs dev",
+    "docs:check": "pnpm --filter @sprixy/docs check"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

@@ -1,4 +1,8 @@
-# Sprixy MCP server
+---
+title: MCP server
+description: Let Claude Code or any MCP client create, generate, edit, animate and export assets.
+audience: [dev]
+---
 
 Sprixy ships an official [Model Context Protocol](https://modelcontextprotocol.io) server so AI agents (Claude Code,
 Claude Desktop, any MCP client) can create projects, generate, edit, animate, search and export game assets.

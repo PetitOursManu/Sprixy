@@ -1,4 +1,7 @@
-# Roadmap & development phases
+---
+title: Roadmap
+description: What is done, phase by phase, and what comes next.
+---
 
 Sprixy is organised in functional phases. Each phase ships working features (no mock buttons, no simulated
 generations), tests and documentation.
@@ -33,12 +36,12 @@ Dockerfile (Node 24 + ffmpeg, non-root, health check), docker compose, Coolify g
 ## Phase 7 — Real-world validation & competitive features ✅
 All AI jobs tested against real fal.ai calls (generation, variants, directions, video & sheet animations, AI cutout,
 region edit) and fixed accordingly (key-color shadows, cutout masks, animation facing). Added from the competitive
-study ([competitive-analysis.md](competitive-analysis.md)): selection-based AI edit, Wang autotile terrain sets with
+study ([competitive analysis](competitive-analysis.md)): selection-based AI edit, Wang autotile terrain sets with
 Godot terrains and Tiled wangsets, native `.aseprite` export, job webhooks, dataset export for external LoRA training,
 mobile layout fixes.
 
 Also validated on real runs: larger models (FLUX.2 dev 32B, FLUX.2 pro, Qwen Image 2512, Qwen Image Edit 2511) with
-comparisons in [providers.md](providers.md), new LoRA families and presets, and the one-call **character sheet**
+comparisons in [Providers](providers.md), new LoRA families and presets, and the one-call **character sheet**
 animation method (4 directions × walk / attack / hurt) through a community sprite-sheet LoRA.
 
 ## Next

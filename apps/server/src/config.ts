@@ -51,6 +51,8 @@ export const config = {
   secureCookies: bool('SPRIXY_SECURE_COOKIES', false),
   sessionDays: Number(env('SPRIXY_SESSION_DAYS', '30')),
   webDist: env('SPRIXY_WEB_DIST'),
+  /** Built Lumy documentation (apps/docs/dist), served at /docs. */
+  docsDist: env('SPRIXY_DOCS_DIST'),
   ffmpegPath: env('FFMPEG_PATH'),
   maxUploadMb: Number(env('SPRIXY_MAX_UPLOAD_MB', '50')),
   pollIntervalMs: Number(env('SPRIXY_POLL_INTERVAL_MS', '1500')),

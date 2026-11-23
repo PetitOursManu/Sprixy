@@ -75,7 +75,8 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="nav-label">Account</div>
           <NavLink to="/usage"><Icon name="chart" /> Usage & budget</NavLink>
           <NavLink to="/settings"><Icon name="cog" /> Settings</NavLink>
-          <a href="/api/docs" target="_blank" rel="noreferrer"><Icon name="book" /> API docs & MCP</a>
+          <a href="/docs/" target="_blank" rel="noreferrer"><Icon name="book" /> Documentation</a>
+          <a href="/api/docs" target="_blank" rel="noreferrer"><Icon name="link" /> API reference</a>
         </nav>
         <div className="sidebar-foot">
           <Link to="/usage" className="budget-card">

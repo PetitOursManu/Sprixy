@@ -12,8 +12,8 @@ generated with the AI models <em>you</em> choose, then turned into <em>true</em>
   BYOK (fal.ai · OpenRouter) · No GPU needed · Docker / Coolify · REST API · MCP server for Claude Code
 </p>
 
-<p align="center"><img src="docs/images/generate.jpg" width="860" alt="Generation with live cost estimate" /></p>
-<p align="center"><img src="docs/images/editor.jpg" width="425" alt="Layered pixel editor" /> <img src="docs/images/asset.jpg" width="425" alt="Asset detail" /></p>
+<p align="center"><img src="apps/docs/docs/assets/generate.jpg" width="860" alt="Generation with live cost estimate" /></p>
+<p align="center"><img src="apps/docs/docs/assets/editor.jpg" width="425" alt="Layered pixel editor" /> <img src="apps/docs/docs/assets/asset.jpg" width="425" alt="Asset detail" /></p>
 
 ---
 
@@ -60,7 +60,7 @@ open http://localhost:3210
 2. **Settings → Provider keys**: paste your fal.ai and/or OpenRouter key (validated, then encrypted).
 3. Create a project, tune its **Art direction**, then **Generate**.
 
-On **Coolify**, use the ready-made `docker-compose.coolify.yml` (Docker Compose build pack). See [docs/deployment.md](docs/deployment.md) for the step-by-step Coolify guide, reverse proxies, backups and every environment variable.
+On **Coolify**, use the ready-made `docker-compose.coolify.yml` (Docker Compose build pack). See the [deployment guide](apps/docs/docs/en/deployment.md) for the step-by-step Coolify guide, reverse proxies, backups and every environment variable.
 
 ## Development
 
@@ -82,18 +82,21 @@ packages/client   @sprixy/client  typed REST client
 packages/mcp      @sprixy/mcp     official MCP server (stdio CLI + factory reused by the HTTP endpoint)
 apps/server       @sprixy/server  Fastify API, SQLite (node:sqlite), jobs, providers, exports, /mcp
 apps/web          @sprixy/web     React UI + pixel editor
-docs/                             architecture, API, MCP, providers, deployment, roadmap
+apps/docs         @sprixy/docs    documentation (Lumy, English + French), served at /docs
 ```
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [REST API & integration guide (Mocky, Muse…)](docs/api.md)
-- [MCP server for Claude Code](docs/mcp.md)
-- [Providers, models, pricing & adding a provider](docs/providers.md)
-- [Deployment (Docker, Coolify)](docs/deployment.md)
-- [Roadmap & development phases](docs/roadmap.md)
-- [Competitive analysis (PixelLab, Retro Diffusion, SpriteKiln)](docs/competitive-analysis.md)
+The documentation is built with [Lumy](https://github.com/PetitOursManu/Lumy), in English and French. Every Sprixy
+instance serves it at **`/docs`** (the OpenAPI reference stays at `/api/docs`). Sources, readable on GitHub:
+
+- [Getting started](apps/docs/docs/en/getting-started.md) · [User guide](apps/docs/docs/en/guide.md)
+- [Deploy (Coolify, Docker)](apps/docs/docs/en/deployment.md) · [Providers, models & pricing](apps/docs/docs/en/providers.md)
+- [REST API & integration (Mocky, Muse…)](apps/docs/docs/en/api.md) · [MCP server for Claude Code](apps/docs/docs/en/mcp.md)
+- [Architecture](apps/docs/docs/en/architecture.md) · [Roadmap](apps/docs/docs/en/roadmap.md) · [Competitive analysis](apps/docs/docs/en/competitive-analysis.md)
+- En français : [apps/docs/docs/fr](apps/docs/docs/fr/)
+
+Preview while writing: `pnpm docs:dev`; check links and translations: `pnpm docs:check`.
 
 ## 🇫🇷 En bref
 

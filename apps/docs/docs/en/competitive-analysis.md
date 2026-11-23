@@ -1,4 +1,7 @@
-# Competitive analysis — PixelLab, Retro Diffusion, SpriteKiln
+---
+title: Competitive analysis
+description: PixelLab, Retro Diffusion and SpriteKiln compared with Sprixy, and what Sprixy took from them.
+---
 
 Study done on 2026-11-23 from the tools' public sites, documentation, API references and repositories
 (sources at the end). The goal was to identify relevant features, **not** to copy any proprietary code: Sprixy

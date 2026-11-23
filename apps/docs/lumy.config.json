@@ -1,0 +1,33 @@
+{
+  "title": "Sprixy",
+  "description": "Open-source, self-hosted studio that makes pixel-perfect 2D game assets with AI, on your own fal.ai or OpenRouter keys.",
+  "version": "v0.1",
+  "base": "/docs/",
+  "logo": "assets/sprixy-mark-transparent.png",
+  "favicon": "assets/sprixy-mark-transparent.png",
+  "languages": [
+    { "code": "en", "label": "English" },
+    { "code": "fr", "label": "Français" }
+  ],
+  "theme": { "brand": "#e96c11", "brandDark": "#ff9a4d" },
+  "github": "https://github.com/PetitOursManu/Sprixy",
+  "editUrl": "https://github.com/PetitOursManu/Sprixy/edit/main/apps/docs/docs/{path}",
+  "issuesUrl": "https://github.com/PetitOursManu/Sprixy/issues",
+  "outsideDocsUrl": "https://github.com/PetitOursManu/Sprixy/blob/main/",
+  "links": [
+    { "label": { "en": "Deploy", "fr": "Déployer" }, "href": "deployment" },
+    { "label": "API", "href": "api" },
+    { "label": "MCP", "href": "mcp" }
+  ],
+  "audiences": [
+    { "id": "user", "label": { "en": "Artist", "fr": "Création" } },
+    { "id": "admin", "label": { "en": "Self-hoster", "fr": "Hébergement" } },
+    { "id": "dev", "label": { "en": "Developer", "fr": "Développement" } }
+  ],
+  "nav": [
+    { "group": { "en": "Get started", "fr": "Démarrer" }, "pages": ["index", "getting-started", "guide"] },
+    { "group": { "en": "Run it", "fr": "Mettre en ligne" }, "pages": ["deployment", "providers"] },
+    { "group": { "en": "Integrate", "fr": "Intégrer" }, "pages": ["api", "mcp"] },
+    { "group": { "en": "Project", "fr": "Projet" }, "pages": ["architecture", "roadmap", "competitive-analysis", "glossary", { "label": "Changelog", "link": "https://github.com/PetitOursManu/Sprixy/commits/main" }] }
+  ]
+}

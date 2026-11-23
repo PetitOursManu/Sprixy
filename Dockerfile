@@ -13,7 +13,8 @@ FROM base AS build
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @sprixy/web build \
- && pnpm --filter @sprixy/server build
+ && pnpm --filter @sprixy/server build \
+ && pnpm --filter @sprixy/docs build
 
 # ── Production dependencies only ──
 FROM base AS deps
@@ -23,6 +24,7 @@ COPY packages/client/package.json packages/client/
 COPY packages/mcp/package.json packages/mcp/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
+COPY apps/docs/package.json apps/docs/
 # Optional deps must stay enabled: sharp ships its native binaries as optional packages.
 # (ffmpeg itself comes from Debian below and is selected through FFMPEG_PATH.)
 RUN pnpm install --prod --frozen-lockfile --filter @sprixy/server...
@@ -38,12 +40,14 @@ ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     SPRIXY_DATA_DIR=/data \
     SPRIXY_WEB_DIST=/app/apps/web/dist \
+    SPRIXY_DOCS_DIST=/app/apps/docs/dist \
     FFMPEG_PATH=/usr/bin/ffmpeg
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/server/node_modules ./apps/server/node_modules
 COPY --from=build /app/apps/server/dist ./apps/server/dist
 COPY --from=build /app/apps/server/package.json ./apps/server/package.json
 COPY --from=build /app/apps/web/dist ./apps/web/dist
+COPY --from=build /app/apps/docs/dist ./apps/docs/dist
 RUN mkdir -p /data && chown -R node:node /data
 USER node
 VOLUME ["/data"]
