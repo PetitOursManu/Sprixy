@@ -54,6 +54,10 @@ A LoRA only works with the base model it was trained for. Sprixy tags every LoRA
 Preset community LoRAs (Hugging Face): `tarn59/pixel_art_style_lora_z_image_turbo`,
 `reverentelusarca/elusarca-pixel-art-style-lora-zimage-turbo`, `limbicnation/pixel-art-lora`. Check each license.
 
+Real-run observation (Z-Image + `tarn59`, same seed): the LoRA adds detail to the raw image, which makes 32×32
+sprites *less* readable than without it. Community pixel-art LoRAs pay off at 64 px and above, or at a lower scale
+(≈ 0.6).
+
 Training requires a dataset whose images are all confirmed as owned/authorized. Pixel art is upscaled with
 nearest-neighbour before upload so trainers see crisp pixels. The cost estimate must be accepted before training starts.
 
@@ -64,6 +68,23 @@ does not train locally. Instead, **Datasets → Export for external training** (
 downloads the dataset in the universal layout (nearest-neighbour upscaled images + same-name `.txt` captions +
 `metadata.jsonl` + README). Train it with ai-toolkit, kohya-ss, OneTrainer, Civitai or any trainer — on your own
 GPU or free notebook GPU time — then use **LoRAs → Import LoRA** with the matching family.
+
+## Model comparison (real runs, 2026-11-23)
+
+Same prompts and seeds, Sprixy art direction (32×32, top-down, Endesga 32), default post-processing. The 64×64 row
+is a free re-conversion of the same AI image.
+
+![Model comparison](images/model-comparison.jpg)
+
+| Model | Cost / image | Result |
+| --- | --- | --- |
+| Z-Image Turbo | ~$0.005 | Cleanest sprites: flat shading, chibi proportions, respects the flat key background. Best at 16–32 px. **Default.** |
+| FLUX.2 klein 9B | ~$0.006 | More detail and more natural proportions, still clean and isolated. Best at 48–64 px, and for edits / references. |
+| FLUX.1 dev | ~$0.037 | Painterly, not pixel art; ignores “no shadow / flat background” (cast shadows, extra props, tinted background); poor after downscaling. |
+| FLUX.1 dev + pixel LoRA (`UmeAiRT/FLUX.1-dev-LoRA-Modern_Pixel_art`, MIT) | ~$0.037 | Pixel-art look in the raw image, but the same composition issues; the weakest sprites. |
+
+Conclusion: FLUX.1 dev (2024) is ~7× more expensive and worse for game sprites than the newer models. It is mainly
+useful for reusing an existing FLUX.1 LoRA from Civitai / Hugging Face.
 
 ## Adding a provider
 
