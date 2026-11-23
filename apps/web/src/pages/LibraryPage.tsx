@@ -6,6 +6,7 @@ import { useDebounced, useMeta } from '../hooks';
 import { AssetTile } from '../components/AssetTile';
 import { Empty, Field, Icon, Modal, useToast } from '../components/ui';
 import { PipelineEditor, type Step } from '../components/PipelineEditor';
+import { AutotileModal } from '../components/AutotileModal';
 
 const KINDS = ['', 'sprite', 'character', 'object', 'environment', 'tileset', 'texture', 'ui', 'icon', 'animation', 'spritesheet', 'import'];
 
@@ -24,7 +25,7 @@ export function LibraryPage() {
   const [collectionId, setCollectionId] = useState('');
   const [sort, setSort] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [modal, setModal] = useState<null | 'upload' | 'process' | 'export' | 'tag' | 'collection' | 'animation' | 'blank'>(null);
+  const [modal, setModal] = useState<null | 'upload' | 'process' | 'export' | 'tag' | 'collection' | 'animation' | 'blank' | 'autotile'>(null);
   const dq = useDebounced(q);
 
   const assets = useQuery({
@@ -95,6 +96,7 @@ export function LibraryPage() {
               {items.length > 0 && <button className="btn ghost sm" onClick={() => setSelected(allSelected ? new Set() : new Set(items.map((a) => a.id)))}>{allSelected ? 'Clear selection' : 'Select all'}</button>}
             </div>
             <div className="row">
+              <button className="btn" onClick={() => setModal('autotile')} title="Build an autotile terrain set from two textures (free)"><Icon name="grid" /> Autotile</button>
               <button className="btn" onClick={() => setModal('blank')}><Icon name="edit" /> Draw</button>
               <button className="btn" onClick={() => setModal('upload')}><Icon name="upload" /> Import</button>
               <Link className="btn primary" to={`/projects/${projectId}/generate`}><Icon name="wand" /> Generate</Link>
@@ -134,6 +136,7 @@ export function LibraryPage() {
       </div>
 
       {modal === 'upload' && <UploadModal projectId={projectId!} onClose={() => setModal(null)} />}
+      {modal === 'autotile' && <AutotileModal projectId={projectId!} onClose={() => setModal(null)} />}
       {modal === 'blank' && <BlankModal projectId={projectId!} onClose={() => setModal(null)} />}
       {modal === 'collection' && <CollectionModal projectId={projectId!} onClose={() => setModal(null)} />}
       {modal === 'tag' && (

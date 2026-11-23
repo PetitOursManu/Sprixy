@@ -10,3 +10,4 @@ export * from './spritesheet.js';
 export * from './recolor.js';
 export * from './tile.js';
 export * from './pipeline.js';
+export * from './autotile.js';

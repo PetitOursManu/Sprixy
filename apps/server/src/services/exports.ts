@@ -1,6 +1,6 @@
 import { zipSync } from 'fflate';
 import { randomBytes } from 'node:crypto';
-import { crop, packSheet, sliceGrid, type RGBAImage, type Frame } from '@sprixy/core';
+import { crop, packSheet, sliceGrid, upscaleInteger, type RGBAImage, type Frame } from '@sprixy/core';
 import { encodePng, encodeGif, encodeWebp, encodeAnimatedWebp } from '../lib/images.js';
 import { badRequest } from '../lib/errors.js';
 import { getAssetRow, loadAssetImage, assetDto, type AssetRow } from './assets.js';
@@ -31,6 +31,7 @@ interface Loaded {
   frames: Frame[] | null;
   fps: number;
   tileSize?: number;
+  wang?: WangMeta;
 }
 
 async function load(userId: string, id: string, opts: ExportOptions): Promise<Loaded> {
@@ -43,6 +44,7 @@ async function load(userId: string, id: string, opts: ExportOptions): Promise<Lo
     frames: dto.frames,
     fps: opts.fps ?? (typeof dto.meta.fps === 'number' ? dto.meta.fps : 10),
     tileSize: opts.tileSize ?? (typeof dto.meta.tileSize === 'number' ? dto.meta.tileSize : undefined),
+    wang: (dto.meta.wang as WangMeta | undefined) ?? undefined,
   };
 }
 
@@ -110,14 +112,61 @@ animations = [{
 `;
 }
 
-function godotTileSet(texPath: string, img: RGBAImage, tile: number): string {
+export interface WangMeta {
+  type: 'corner';
+  terrains: [string, string];
+  tiles: { index: number; col: number; row: number; corners: { nw: 0 | 1; ne: 0 | 1; sw: 0 | 1; se: 0 | 1 } }[];
+  columns: number;
+}
+
+function avgColor(img: RGBAImage, x0: number, y0: number, w: number, h: number): [number, number, number] {
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
+    const i = (y * img.width + x) * 4;
+    if (img.data[i + 3] < 128) continue;
+    r += img.data[i]; g += img.data[i + 1]; b += img.data[i + 2]; n++;
+  }
+  return n ? [r / n, g / n, b / n] : [128, 128, 128];
+}
+
+/** Godot 4 TileSet. With Wang metadata, adds a "Match Corners" terrain set so TileMapLayer terrain painting works. */
+function godotTileSet(texPath: string, img: RGBAImage, tile: number, wang?: WangMeta): string {
   const cols = Math.floor(img.width / tile), rows = Math.floor(img.height / tile);
   const tiles: string[] = [];
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     const t = crop(img, { x: x * tile, y: y * tile, w: tile, h: tile });
     let any = false;
     for (let i = 3; i < t.data.length; i += 4) if (t.data[i]) { any = true; break; }
-    if (any) tiles.push(`${x}:${y}/0 = 0`);
+    if (!any) continue;
+    tiles.push(`${x}:${y}/0 = 0`);
+    const w = wang?.tiles.find((wt) => wt.col === x && wt.row === y);
+    if (w) {
+      const c = w.corners;
+      const center = c.nw + c.ne + c.sw + c.se >= 2 ? 1 : 0;
+      tiles.push(
+        `${x}:${y}/0/terrain_set = 0`,
+        `${x}:${y}/0/terrain = ${center}`,
+        `${x}:${y}/0/terrains_peering_bit/top_left_corner = ${c.nw}`,
+        `${x}:${y}/0/terrains_peering_bit/top_right_corner = ${c.ne}`,
+        `${x}:${y}/0/terrains_peering_bit/bottom_left_corner = ${c.sw}`,
+        `${x}:${y}/0/terrains_peering_bit/bottom_right_corner = ${c.se}`,
+      );
+    }
+  }
+  let terrain = '';
+  if (wang) {
+    const full = (v: 0 | 1) => wang.tiles.find((t) => t.corners.nw === v && t.corners.ne === v && t.corners.sw === v && t.corners.se === v);
+    const color = (v: 0 | 1) => {
+      const t = full(v);
+      const [r, g, b] = t ? avgColor(img, t.col * tile, t.row * tile, tile, tile) : [128, 128, 128];
+      return `Color(${(r / 255).toFixed(3)}, ${(g / 255).toFixed(3)}, ${(b / 255).toFixed(3)}, 1)`;
+    };
+    terrain = `terrain_set_0/mode = 1
+terrain_set_0/terrain_0/name = "${wang.terrains[0]}"
+terrain_set_0/terrain_0/color = ${color(0)}
+terrain_set_0/terrain_1/name = "${wang.terrains[1]}"
+terrain_set_0/terrain_1/color = ${color(1)}
+`;
   }
   return `[gd_resource type="TileSet" load_steps=3 format=3]
 
@@ -130,7 +179,35 @@ ${tiles.join('\n')}
 
 [resource]
 tile_size = Vector2i(${tile}, ${tile})
-sources/0 = SubResource("TileSetAtlasSource_1")
+${terrain}sources/0 = SubResource("TileSetAtlasSource_1")
+`;
+}
+
+const xmlEsc = (s: string) => s.replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c]!);
+
+/** Tiled tileset (.tsx) — with a corner wangset when Wang metadata exists. Phaser and many engines load Tiled maps. */
+function tiledTileset(name: string, png: string, img: RGBAImage, tile: number, wang?: WangMeta): string {
+  const cols = Math.floor(img.width / tile), rows = Math.floor(img.height / tile);
+  const hex = (c: [number, number, number]) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+  let wangsets = '';
+  if (wang) {
+    const full = (v: 0 | 1) => wang.tiles.find((t) => t.corners.nw === v && t.corners.ne === v && t.corners.sw === v && t.corners.se === v);
+    const col = (v: 0 | 1) => { const t = full(v); return hex(t ? avgColor(img, t.col * tile, t.row * tile, tile, tile) : [128, 128, 128]); };
+    // wangid order: top, top-right, right, bottom-right, bottom, bottom-left, left, top-left (colors are 1-based).
+    const tilesXml = wang.tiles.map((t) => `   <wangtile tileid="${t.row * cols + t.col}" wangid="0,${t.corners.ne + 1},0,${t.corners.se + 1},0,${t.corners.sw + 1},0,${t.corners.nw + 1}"/>`).join('\n');
+    wangsets = `
+ <wangsets>
+  <wangset name="${xmlEsc(name)}" type="corner" tile="-1">
+   <wangcolor name="${xmlEsc(wang.terrains[0])}" color="${col(0)}" tile="${full(0) ? full(0)!.row * cols + full(0)!.col : -1}" probability="1"/>
+   <wangcolor name="${xmlEsc(wang.terrains[1])}" color="${col(1)}" tile="${full(1) ? full(1)!.row * cols + full(1)!.col : -1}" probability="1"/>
+${tilesXml}
+  </wangset>
+ </wangsets>`;
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<tileset version="1.10" tiledversion="1.11.0" name="${xmlEsc(name)}" tilewidth="${tile}" tileheight="${tile}" tilecount="${cols * rows}" columns="${cols}">
+ <image source="${xmlEsc(png)}" width="${img.width}" height="${img.height}"/>${wangsets}
+</tileset>
 `;
 }
 
@@ -309,6 +386,9 @@ export async function exportAsset(userId: string, id: string, format: ExportForm
         files[`${base}.gif`] = new Uint8Array(encodeGif(frames, durations(a), scale));
         for (const [i, f] of frames.entries()) files[`frames/${a.name}_${String(i).padStart(3, '0')}.png`] = new Uint8Array(await encodePng(f, scale));
       }
+      if (a.row.kind === 'tileset' || a.row.kind === 'texture') {
+        files[`${base}.tsx`] = enc(tiledTileset(a.name, `${base}.png`, scale > 1 ? upscaleInteger(a.image, scale) : a.image, (a.tileSize ?? 16) * scale, a.wang));
+      }
       return { filename: `${base}.zip`, mime: 'application/zip', data: Buffer.from(zipSync(files)) };
     }
     case 'godot': {
@@ -317,7 +397,7 @@ export async function exportAsset(userId: string, id: string, format: ExportForm
       const names = [png, `${png}.import`];
       if (a.row.kind === 'tileset' || a.row.kind === 'texture') {
         const tile = (a.tileSize ?? 16) * scale;
-        files[`${a.name}_tileset.tres`] = enc(godotTileSet(`res://sprites/${png}`, await (async () => a.image)(), tile));
+        files[`${a.name}_tileset.tres`] = enc(godotTileSet(`res://sprites/${png}`, scale > 1 ? upscaleInteger(a.image, scale) : a.image, tile, a.wang));
         names.push(`${a.name}_tileset.tres`);
       } else {
         files[`${a.name}_frames.tres`] = enc(godotSpriteFrames(a, `res://sprites/${png}`, scale));
@@ -350,6 +430,10 @@ export async function exportAsset(userId: string, id: string, format: ExportForm
         [`${a.name}_anims.json`]: enc(JSON.stringify(phaserAnims(a, a.name), null, 2)),
         ['load-example.js']: enc(phaserSnippet(a)),
       };
+      if (a.row.kind === 'tileset' || a.row.kind === 'texture') {
+        // Tiled tileset (with a corner wangset for autotiles) — build maps in Tiled, load them in Phaser.
+        files[`${a.name}.tsx`] = enc(tiledTileset(a.name, png, scale > 1 ? upscaleInteger(a.image, scale) : a.image, (a.tileSize ?? 16) * scale, a.wang));
+      }
       files['README.md'] = enc(readme(a, 'Phaser', Object.keys(files)));
       return { filename: `${a.name}_phaser.zip`, mime: 'application/zip', data: Buffer.from(zipSync(files)) };
     }

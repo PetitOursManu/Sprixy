@@ -18,6 +18,7 @@ import { aiRoutes } from './routes/ai.js';
 import { accountRoutes } from './routes/account.js';
 import { exportRoutes } from './routes/exports.js';
 import { mcpRoutes } from './mcp.js';
+import { tilesetRoutes } from './routes/tilesets.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -76,6 +77,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(aiRoutes);
   await app.register(accountRoutes);
   await app.register(exportRoutes);
+  await app.register(tilesetRoutes);
   await app.register(mcpRoutes);
 
   // Serve the built web UI (single container deployment).

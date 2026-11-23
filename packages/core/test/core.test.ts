@@ -257,3 +257,27 @@ describe('applyMask (BiRefNet cutouts)', () => {
     expect(getPixel(out, 1, 0)[3]).toBe(0);
   });
 });
+
+describe('Wang corner autotile', () => {
+  it('builds 16 seamless tiles whose shared edges always match', async () => {
+    const { buildWangTileset } = await import('../src/index.js');
+    const T = 16;
+    const lower = createImage(T, T, [120, 80, 40, 255]);
+    const upper = createImage(T, T, [60, 180, 70, 255]);
+    const { image, tiles } = buildWangTileset(lower, upper, { tileSize: T, seed: 3, edge: false });
+    expect(image.width).toBe(64);
+    expect(tiles).toHaveLength(16);
+    const isUpper = (tile: number, x: number, y: number) => {
+      const t = tiles[tile];
+      return getPixel(image, t.col * T + x, t.row * T + y)[1] === 180;
+    };
+    // Full tiles
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { expect(isUpper(0, x, y)).toBe(false); expect(isUpper(15, x, y)).toBe(true); }
+    // Horizontal neighbours sharing an edge: right column of A vs left column of B must agree.
+    for (let a = 0; a < 16; a++) for (let b = 0; b < 16; b++) {
+      const A = tiles[a].corners, B = tiles[b].corners;
+      if (A.ne !== B.nw || A.se !== B.sw) continue; // only valid placements
+      for (let y = 0; y < T; y++) expect(isUpper(a, T - 1, y)).toBe(isUpper(b, 0, y));
+    }
+  });
+});

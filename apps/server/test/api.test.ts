@@ -139,6 +139,30 @@ describe('Sprixy API', () => {
     expect(new TextDecoder().decode(files['dataset/img_001.txt'])).toBe('sprx, pixel art mage');
   });
 
+  it('builds a Wang autotile set and exports Godot terrains + Tiled wangset', async () => {
+    const { encodePng } = await import('../src/lib/images.js');
+    const { createImage } = await import('@sprixy/core');
+    const tex = async (c: [number, number, number, number], name: string) =>
+      (await call('POST', '/api/v1/assets/import', { projectId, name, kind: 'texture', image: `data:image/png;base64,${(await encodePng(createImage(16, 16, c))).toString('base64')}` })).json().id as string;
+    const dirt = await tex([120, 80, 40, 255], 'dirt');
+    const grass = await tex([60, 180, 70, 255], 'grass');
+    const res = await call('POST', '/api/v1/tilesets/wang', { projectId, lowerAssetId: dirt, upperAssetId: grass, lowerName: 'Dirt', upperName: 'Grass', tileSize: 16 });
+    expect(res.statusCode).toBe(200);
+    const set = res.json();
+    expect(set.width).toBe(64);
+    expect(set.meta.wang.tiles).toHaveLength(16);
+    const godot = unzipSync(new Uint8Array((await call('GET', `/api/v1/assets/${set.id}/export?format=godot&scale=2`)).rawPayload));
+    const tres = new TextDecoder().decode(Object.entries(godot).find(([k]) => k.endsWith('_tileset.tres'))![1]);
+    expect(tres).toContain('terrain_set_0/mode = 1');
+    expect(tres).toContain('terrain_set_0/terrain_1/name = "Grass"');
+    expect(tres).toContain('3:3/0/terrains_peering_bit/bottom_right_corner = 1');
+    expect(tres).toContain('texture_region_size = Vector2i(32, 32)');
+    const phaser = unzipSync(new Uint8Array((await call('GET', `/api/v1/assets/${set.id}/export?format=phaser`)).rawPayload));
+    const tsx = new TextDecoder().decode(Object.entries(phaser).find(([k]) => k.endsWith('.tsx'))![1]);
+    expect(tsx).toContain('<wangset');
+    expect(tsx.match(/<wangtile /g)).toHaveLength(16);
+  });
+
   it('enforces BYOK: jobs fail fast without a provider key, estimates work', async () => {
     const spec = { task: 'generate', projectId, kind: 'character', prompt: 'a tiny wizard', count: 2 };
     const est = await call('POST', '/api/v1/generations/estimate', spec);

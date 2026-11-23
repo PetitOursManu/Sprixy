@@ -275,6 +275,19 @@ export function createSprixyMcpServer(client: SprixyClient, opts: SprixyMcpOptio
     },
   }, guard(async ({ assetId, ...body }) => ({ content: [json(await client.request('POST', `/api/v1/assets/${assetId}/slice`, body))] })));
 
+  server.registerTool('sprixy_build_autotile', {
+    title: 'Autotile terrain set (free)',
+    description: 'Build a 16-tile Wang corner autotile set (2 terrains, e.g. dirt + grass) from two texture assets of a project. Free and deterministic; exports as a Godot terrain set or a Tiled wangset.',
+    inputSchema: {
+      projectId: z.string(), lowerAssetId: z.string(), upperAssetId: z.string(),
+      lowerName: z.string().optional(), upperName: z.string().optional(), tileSize: z.number().int().optional(),
+      seed: z.number().int().optional(), roughness: z.number().min(0).max(1).optional(), edge: z.boolean().optional(),
+    },
+  }, guard(async (body) => {
+    const a = (await client.request('POST', '/api/v1/tilesets/wang', body)) as Asset;
+    return { content: [json({ id: a.id, name: a.name, size: `${a.width}x${a.height}` }), ...(await previews([a], 1))] };
+  }));
+
   // ── Export ──
   server.registerTool('sprixy_export_asset', {
     title: 'Export asset',
