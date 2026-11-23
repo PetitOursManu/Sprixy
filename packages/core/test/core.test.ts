@@ -213,3 +213,25 @@ describe('pipeline', () => {
     expect(trim(createImage(4, 4)).width).toBe(1);
   });
 });
+
+describe('key-color shadows (real AI output case)', () => {
+  it('removes a darker key-tinted drop shadow and background enclosed between legs', async () => {
+    const { removeBackgroundFlood, removeKeyColorRegions, estimateBackgroundColor } = await import('../src/index.js');
+    const bg: RGBA = [183, 23, 178, 255];        // what the model actually painted
+    const shadow: RGBA = [120, 10, 118, 255];    // darker magenta shadow
+    const body: RGBA = [60, 50, 110, 255];       // desaturated purple subject (must survive)
+    const img = createImage(20, 20, bg);
+    for (let y = 2; y < 14; y++) for (let x = 6; x < 14; x++) setPixel(img, x, y, body);
+    for (let y = 14; y < 17; y++) { setPixel(img, 6, y, body); setPixel(img, 7, y, body); setPixel(img, 12, y, body); setPixel(img, 13, y, body); }
+    for (let x = 4; x < 16; x++) setPixel(img, x, 17, shadow); // shadow closes the gap between legs
+    const key = estimateBackgroundColor(img);
+    expect(key).toEqual([183, 23, 178]);
+    const flood = removeBackgroundFlood(img, { tolerance: 16 });
+    expect(getPixel(flood, 10, 15)[3]).toBe(255); // enclosed gap survives a plain flood…
+    const out = removeKeyColorRegions(flood, { key });
+    expect(getPixel(out, 10, 17)[3]).toBe(0);     // …shadow removed
+    expect(getPixel(out, 10, 15)[3]).toBe(0);     // gap between legs removed
+    expect(getPixel(out, 8, 8)[3]).toBe(255);     // subject intact
+    expect(getPixel(out, 6, 16)[3]).toBe(255);
+  });
+});

@@ -180,7 +180,7 @@ export function buildPrompt(kind: GeneratableKind, subject: string, ad: ArtDirec
     'crisp hard-edged pixels, no anti-aliasing, no blur, no gradients',
     ad.styleNotes,
     opts.extra ?? '',
-    spec.transparent ? `isolated on a plain flat solid ${KEY_BG.name} (${KEY_BG.hex}) background, nothing else in the background` : '',
+    spec.transparent ? `isolated on a plain flat solid ${KEY_BG.name} (${KEY_BG.hex}) background, nothing else in the background, no drop shadow, no ground, no floor` : '',
   ];
   return parts.filter((p) => p && p.trim()).join(', ');
 }

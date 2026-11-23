@@ -252,7 +252,7 @@ const PRESETS: { label: string; steps: (palette: string[]) => Step[] }[] = [
   { label: 'Project palette', steps: (p) => (p.length ? [{ op: 'applyPalette', palette: p }] : [{ op: 'reduceColors', maxColors: 16 }]) },
   { label: 'Black outline', steps: () => [{ op: 'outline', color: '#000000', mode: 'outer' }] },
   { label: 'Trim', steps: () => [{ op: 'trim' }] },
-  { label: 'Remove flat bg', steps: () => [{ op: 'removeBackground', tolerance: 12 }] },
+  { label: 'Remove flat bg', steps: () => [{ op: 'removeBackground', tolerance: 12 }, { op: 'removeKeyColor' }] },
   { label: 'Recolor hue +60°', steps: () => [{ op: 'hsl', hue: 60 }] },
 ];
 

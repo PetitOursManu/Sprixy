@@ -20,6 +20,7 @@ const hex = z.string().regex(/^#?[0-9a-fA-F]{6}$/);
 const dither = z.enum(['none', 'floyd-steinberg', 'atkinson', 'bayer2', 'bayer4', 'bayer8']);
 export const processStepSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('removeBackground'), tolerance: z.number().min(0).max(100).optional(), global: z.boolean().optional() }),
+  z.object({ op: z.literal('removeKeyColor'), color: hex.optional(), hueTolerance: z.number().min(1).max(90).optional() }),
   z.object({ op: z.literal('chromaKey'), color: hex, tolerance: z.number().min(0).max(100).optional() }),
   z.object({ op: z.literal('hardenAlpha'), threshold: z.number().int().min(0).max(255).optional() }),
   z.object({ op: z.literal('pixelize'), width: z.number().int().min(1).max(2048).optional(), height: z.number().int().min(1).max(2048).optional(), sampling: z.enum(['mode', 'center', 'average']).optional() }),

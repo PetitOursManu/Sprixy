@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { zipSync } from 'fflate';
 import {
   type RGBAImage, type Frame,
-  removeBackgroundFlood, contentBounds, crop, pixelize, resizeCanvas, runPipeline, hardenAlpha, removeOrphans,
+  removeBackgroundFlood, estimateBackgroundColor, removeKeyColorRegions, contentBounds, crop, pixelize, resizeCanvas, runPipeline, hardenAlpha, removeOrphans,
   addOutline, makeSeamless, upscaleInteger, flipHorizontal, packSheet, autoSlice, sliceGrid, alignFrames, applyMask,
   resizeNearest, applyPalette, paletteFromHex, createImage, blit,
 } from '@sprixy/core';
@@ -168,7 +168,13 @@ export interface ToSpriteOptions {
 /** Deterministic conversion of a raw AI image into a clean, true-grid pixel-art asset. */
 export function toSprite(raw: RGBAImage, o: ToSpriteOptions): RGBAImage {
   let img = raw;
-  if (o.transparent && o.post.removeBackground === 'flood') img = removeBackgroundFlood(img, { tolerance: 16 });
+  if (o.transparent && o.post.removeBackground === 'flood') {
+    // Models never paint the exact key color: measure it, flood-fill it, then clear key-tinted
+    // shadows and background enclosed between limbs.
+    const key = estimateBackgroundColor(img);
+    img = removeBackgroundFlood(img, { tolerance: 16 });
+    img = removeKeyColorRegions(img, { key });
+  }
   if (o.seamless) img = makeSeamless(img);
   if (o.post.pixelize) {
     if (o.transparent) {

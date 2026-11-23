@@ -8,7 +8,7 @@ import { hexToRgb } from './color.js';
 import { applyPalette, reduceColors, paletteFromHex, type DitherMode } from './quantize.js';
 import { resizeNearest, upscaleInteger } from './resize.js';
 import { pixelize, type CellSampling } from './pixelize.js';
-import { removeBackgroundFlood, chromaKey, hardenAlpha } from './background.js';
+import { removeBackgroundFlood, chromaKey, hardenAlpha, removeKeyColorRegions, estimateBackgroundColor } from './background.js';
 import { removeOrphans, fillPinholes, despeckle, addOutline } from './outline.js';
 import { adjustHsl, replaceColors, paletteSwap, brightnessContrast } from './recolor.js';
 import { makeSeamless } from './tile.js';
@@ -17,6 +17,7 @@ import { getPalettePreset } from './palettes.js';
 export type ProcessStep =
   | { op: 'removeBackground'; tolerance?: number; global?: boolean }
   | { op: 'chromaKey'; color: string; tolerance?: number }
+  | { op: 'removeKeyColor'; color?: string; hueTolerance?: number }
   | { op: 'hardenAlpha'; threshold?: number }
   | { op: 'pixelize'; width?: number; height?: number; sampling?: CellSampling }
   | { op: 'resize'; width: number; height: number }
@@ -53,6 +54,7 @@ export function runStep(img: RGBAImage, step: ProcessStep): RGBAImage {
   switch (step.op) {
     case 'removeBackground': return removeBackgroundFlood(img, { tolerance: step.tolerance, global: step.global });
     case 'chromaKey': return chromaKey(img, hexToRgb(step.color), step.tolerance);
+    case 'removeKeyColor': return removeKeyColorRegions(img, { key: step.color ? hexToRgb(step.color) : estimateBackgroundColor(img), hueTolerance: step.hueTolerance });
     case 'hardenAlpha': return hardenAlpha(img, step.threshold);
     case 'pixelize': return pixelize(img, { width: step.width, height: step.height, sampling: step.sampling });
     case 'resize': return resizeNearest(img, step.width, step.height);
@@ -89,6 +91,7 @@ export function runPipeline(img: RGBAImage, steps: ProcessStep[]): RGBAImage {
 /** Human-readable catalogue of operations (used by UI forms, REST docs and MCP tool descriptions). */
 export const PROCESS_OPS: { op: ProcessOp; label: string; description: string; params: Record<string, string> }[] = [
   { op: 'removeBackground', label: 'Remove background', description: 'Flood-fill from the borders and clear pixels matching the background color (free, deterministic).', params: { tolerance: 'number 0-100 (default 12)', global: 'boolean — remove matching color everywhere' } },
+  { op: 'removeKeyColor', label: 'Remove key-color shadows', description: 'Clear regions tinted with the background (key) color that a flood fill misses: drop shadows, background enclosed between limbs. Color is auto-detected from the corners if omitted.', params: { color: 'hex (optional)', hueTolerance: 'degrees (default 16)' } },
   { op: 'chromaKey', label: 'Chroma key', description: 'Make a given color transparent.', params: { color: 'hex', tolerance: 'number 0-100' } },
   { op: 'hardenAlpha', label: 'Harden alpha', description: 'Binarize alpha (pixel art has no semi-transparency).', params: { threshold: 'number 0-255 (default 127)' } },
   { op: 'pixelize', label: 'Pixelize to grid', description: 'Snap onto a true pixel grid. With width/height: exact output size; without: auto-detect the pseudo-pixel grid.', params: { width: 'int', height: 'int', sampling: 'mode | center | average' } },

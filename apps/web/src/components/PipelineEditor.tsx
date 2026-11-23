@@ -16,6 +16,7 @@ const DITHER = ['none', 'floyd-steinberg', 'atkinson', 'bayer2', 'bayer4', 'baye
 /** Parameter form specs per processing op (mirrors @sprixy/core ProcessStep). */
 export const OP_PARAMS: Record<string, ParamSpec[]> = {
   removeBackground: [{ key: 'tolerance', type: 'int', min: 0, max: 100, default: 12 }, { key: 'global', type: 'bool', default: false }],
+  removeKeyColor: [{ key: 'hueTolerance', type: 'int', min: 1, max: 90, default: 16 }],
   chromaKey: [{ key: 'color', type: 'color', default: '#ff00ff' }, { key: 'tolerance', type: 'int', min: 0, max: 100, default: 10 }],
   hardenAlpha: [{ key: 'threshold', type: 'int', min: 0, max: 255, default: 127 }],
   pixelize: [{ key: 'width', type: 'int', min: 1, max: 2048, optional: true }, { key: 'height', type: 'int', min: 1, max: 2048, optional: true }, { key: 'sampling', type: 'select', options: ['mode', 'center', 'average'], default: 'mode' }],
