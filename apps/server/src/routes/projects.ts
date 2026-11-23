@@ -9,7 +9,7 @@ import { artDirectionSchema, normalizeArtDirection, paletteOf, KIND_SPECS, GENER
 import { deleteAsset, assertProject } from '../services/assets.js';
 
 interface ProjectRow {
-  id: string; name: string; description: string; art_direction: string; cover_asset_id: string | null; archived: number; created_at: number; updated_at: number;
+  id: string; name: string; description: string; art_direction: string; cover_asset_id: string | null; archived: number; catalog_shared: number; created_at: number; updated_at: number;
 }
 
 export function projectDto(p: ProjectRow & { asset_count?: number }) {
@@ -22,6 +22,8 @@ export function projectDto(p: ProjectRow & { asset_count?: number }) {
     effectivePalette: paletteOf(ad),
     coverUrl: p.cover_asset_id ? `/api/v1/assets/${p.cover_asset_id}/file` : null,
     archived: !!p.archived,
+    /** Visible to connected apps (Mocky…) through catalog tokens. */
+    catalogShared: !!p.catalog_shared,
     assetCount: p.asset_count ?? undefined,
     createdAt: p.created_at,
     updatedAt: p.updated_at,
@@ -76,17 +78,21 @@ export async function projectRoutes(app: FastifyInstance) {
 
   r.patch('/api/v1/projects/:id', {
     schema: {
-      tags: ['projects'], summary: 'Update project name/description/archive flag',
+      tags: ['projects'], summary: 'Update project name, description, archive flag, cover, sharing with connected apps',
       params: idParam,
-      body: z.object({ name: z.string().min(1).max(120).optional(), description: z.string().max(2000).optional(), archived: z.boolean().optional(), coverAssetId: z.string().nullable().optional() }),
+      body: z.object({
+        name: z.string().min(1).max(120).optional(), description: z.string().max(2000).optional(), archived: z.boolean().optional(), coverAssetId: z.string().nullable().optional(),
+        catalogShared: z.boolean().optional().describe('Share the assets of this project with connected apps (Mocky…) through catalog tokens'),
+      }),
     },
   }, async (req) => {
     const u = requireUser(req);
     const p = getDb().get<ProjectRow>('SELECT * FROM projects WHERE id = ? AND user_id = ?', req.params.id, u.id);
     if (!p) throw notFound('Project');
-    getDb().run('UPDATE projects SET name=?, description=?, archived=?, cover_asset_id=?, updated_at=? WHERE id=?',
+    getDb().run('UPDATE projects SET name=?, description=?, archived=?, cover_asset_id=?, catalog_shared=?, updated_at=? WHERE id=?',
       req.body.name ?? p.name, req.body.description ?? p.description, req.body.archived === undefined ? p.archived : req.body.archived ? 1 : 0,
-      req.body.coverAssetId === undefined ? p.cover_asset_id : req.body.coverAssetId, Date.now(), p.id);
+      req.body.coverAssetId === undefined ? p.cover_asset_id : req.body.coverAssetId,
+      req.body.catalogShared === undefined ? p.catalog_shared : req.body.catalogShared ? 1 : 0, Date.now(), p.id);
     return projectDto(getDb().get<ProjectRow>('SELECT * FROM projects WHERE id = ?', p.id)!);
   });
 

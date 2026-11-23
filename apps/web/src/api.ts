@@ -118,6 +118,8 @@ export interface Project {
   effectivePalette: string[];
   coverUrl: string | null;
   archived: boolean;
+  /** Visible to connected apps (Mocky…) through read-only catalog tokens. */
+  catalogShared: boolean;
   assetCount?: number;
   createdAt: number;
   updatedAt: number;

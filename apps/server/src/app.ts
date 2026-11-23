@@ -11,7 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { HttpError } from './lib/errors.js';
-import { authRoutes, resolveUser } from './auth.js';
+import { authRoutes, resolveUser, allowedForScope } from './auth.js';
 import { projectRoutes } from './routes/projects.js';
 import { assetRoutes } from './routes/assets.js';
 import { aiRoutes } from './routes/ai.js';
@@ -20,6 +20,7 @@ import { exportRoutes } from './routes/exports.js';
 import { mcpRoutes } from './mcp.js';
 import { tilesetRoutes } from './routes/tilesets.js';
 import { adminRoutes } from './routes/admin.js';
+import { catalogRoutes } from './routes/catalog.js';
 
 export async function buildApp(opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
   const app = Fastify({
@@ -53,7 +54,12 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(swaggerUi, { routePrefix: '/api/docs' });
 
   app.addHook('onRequest', async (req) => {
-    if (req.url.startsWith('/api/') || req.url.startsWith('/mcp')) resolveUser(req);
+    if (req.url.startsWith('/api/') || req.url.startsWith('/mcp')) {
+      resolveUser(req);
+      if (!allowedForScope(req.tokenScope, req.method, req.url)) {
+        throw new HttpError(403, 'TOKEN_SCOPE', 'This token is read-only: it can only read the shared catalog (/api/v1/catalog)');
+      }
+    }
   });
 
   app.setErrorHandler((err, req, reply) => {
@@ -80,6 +86,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(exportRoutes);
   await app.register(tilesetRoutes);
   await app.register(adminRoutes);
+  await app.register(catalogRoutes);
   await app.register(mcpRoutes);
 
   const here = path.dirname(fileURLToPath(import.meta.url));

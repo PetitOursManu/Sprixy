@@ -176,4 +176,8 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE user_settings ADD COLUMN cap_daily_usd REAL;
   ALTER TABLE user_settings ADD COLUMN shared_keys INTEGER NOT NULL DEFAULT 0;
   `,
+  /* 5 — connected apps (Mocky…): read-only catalog tokens and projects shared with them */ `
+  ALTER TABLE api_tokens ADD COLUMN scope TEXT NOT NULL DEFAULT 'full';
+  ALTER TABLE projects ADD COLUMN catalog_shared INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

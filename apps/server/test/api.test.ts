@@ -304,6 +304,48 @@ describe('Sprixy API', () => {
     expect((await admin('GET', '/api/v1/admin/users')).json().items).toHaveLength(1);
   });
 
+  it('shares chosen projects with connected apps through read-only catalog tokens', async () => {
+    const created = await call('POST', '/api/v1/tokens', { name: 'Mocky', scope: 'catalog' });
+    expect(created.json().scope).toBe('catalog');
+    const cat = (method: string, url: string, payload?: unknown) =>
+      app.inject({ method: method as 'GET', url, payload: payload as object, headers: { authorization: `Bearer ${created.json().token}` } });
+    // Read-only and limited to the catalog
+    expect((await cat('GET', '/api/v1/projects')).json().error.code).toBe('TOKEN_SCOPE');
+    expect((await cat('POST', '/api/v1/generations', { task: 'generate', projectId, kind: 'sprite', prompt: 'x' })).statusCode).toBe(403);
+    expect((await cat('GET', `/api/v1/assets/${assetId}/file`)).statusCode).toBe(403);
+    expect((await cat('POST', '/mcp', { jsonrpc: '2.0', id: 1, method: 'tools/list' })).statusCode).toBe(403);
+    expect((await cat('GET', '/api/v1/auth/me')).json().user.email).toBe('dev@example.test');
+    // Nothing is visible until a project is shared
+    expect((await cat('GET', '/api/v1/catalog/assets')).json().total).toBe(0);
+    expect((await cat('GET', `/api/v1/catalog/assets/${assetId}/image`)).statusCode).toBe(404);
+    const shared = await call('PATCH', `/api/v1/projects/${projectId}`, { catalogShared: true });
+    expect(shared.json().catalogShared).toBe(true);
+
+    const root = (await cat('GET', '/api/v1/catalog')).json();
+    expect(root.projects).toHaveLength(1);
+    expect(root.projects[0]).toMatchObject({ id: projectId, name: 'Dungeon', perspective: 'top-down' });
+    const list = (await cat('GET', '/api/v1/catalog/assets')).json();
+    expect(list.total).toBeGreaterThan(1);
+    const { decodeImage } = await import('../src/lib/images.js');
+    for (const item of list.items) {
+      expect(Number.isInteger(item.image.scale)).toBe(true);
+      expect(item.credit).toEqual({ author: 'Dev', source: 'Sprixy' });
+      const png = await cat('GET', item.image.url);
+      expect(png.headers['content-type']).toBe('image/png');
+      const img = await decodeImage(png.rawPayload);
+      expect([img.width, img.height]).toEqual([item.image.width, item.image.height]);
+      expect(Math.max(img.width, img.height)).toBeLessThanOrEqual(2048);
+    }
+    const animated = list.items.find((i: { frames: number }) => i.frames > 1);
+    expect(animated).toBeTruthy();
+    const thumb = await decodeImage((await cat('GET', `/api/v1/catalog/assets/${animated.id}/image?size=128&frame=1`)).rawPayload);
+    expect(thumb.width % animated.width).toBe(0);
+    expect((await cat('GET', '/api/v1/catalog/assets?q=nothing-matches-this')).json().total).toBe(0);
+
+    await call('PATCH', `/api/v1/projects/${projectId}`, { catalogShared: false });
+    expect((await cat('GET', '/api/v1/catalog/assets')).json().total).toBe(0);
+  });
+
   it('exposes OpenAPI docs and meta', async () => {
     const spec = await call('GET', '/api/docs/json', undefined, 'none');
     expect(spec.statusCode).toBe(200);

@@ -135,6 +135,8 @@ kbd { font-family: var(--mono); font-size: 11px; padding: 1px 5px; border: 1px s
 .btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn.ghost:hover { background: var(--bg-3); color: var(--text); }
+.btn.shared-on { color: #1f8487; border-color: color-mix(in srgb, var(--cyan) 45%, transparent); background: #ecf8f8; }
+.btn.shared-on:hover { background: #dff3f3; }
 .btn.danger { color: var(--red); }
 .btn.danger:hover { border-color: color-mix(in srgb, var(--red) 45%, transparent); background: #fdf1f0; }
 .btn.sm { height: 28px; padding: 0 10px; font-size: 12px; }

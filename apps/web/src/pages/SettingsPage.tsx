@@ -3,11 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { del, fmtUsd, get, post, put, timeAgo } from '../api';
 import { useBalances, type Balance } from '../hooks';
 import { useAuth } from '../auth';
-import { Field, Icon, useCopy, useToast } from '../components/ui';
+import { Field, Icon, Segmented, useCopy, useToast } from '../components/ui';
 
 interface Provider { id: 'fal' | 'openrouter'; name: string; website: string; keyHelpUrl: string; configured: boolean }
 interface Key { id: string; provider: string; label: string; hint: string; status: string; info: Record<string, unknown>; createdAt: number; validatedAt: number | null }
-interface Token { id: string; name: string; prefix: string; createdAt: number; lastUsedAt: number | null }
+interface Token { id: string; name: string; prefix: string; scope: 'full' | 'catalog'; createdAt: number; lastUsedAt: number | null }
 
 const PROVIDER_NOTES: Record<string, string> = {
   fal: 'Image (Z-Image Turbo, FLUX.2 klein), video (Wan), background removal (BiRefNet) and LoRA training. Prices are refreshed from fal’s pricing API.',
@@ -128,17 +128,24 @@ function ApiTokens() {
   const copy = useCopy();
   const tokens = useQuery({ queryKey: ['tokens'], queryFn: () => get<{ items: Token[] }>('/api/v1/tokens') });
   const [name, setName] = useState('');
+  const [scope, setScope] = useState<'full' | 'catalog'>('full');
   const [created, setCreated] = useState<string | null>(null);
-  const create = useMutation({ mutationFn: () => post<{ token: string }>('/api/v1/tokens', { name }), onSuccess: (r) => { setCreated(r.token); setName(''); void qc.invalidateQueries({ queryKey: ['tokens'] }); } });
+  const create = useMutation({ mutationFn: () => post<{ token: string }>('/api/v1/tokens', { name, scope }), onSuccess: (r) => { setCreated(r.token); setName(''); void qc.invalidateQueries({ queryKey: ['tokens'] }); } });
   const revoke = useMutation({ mutationFn: (id: string) => del(`/api/v1/tokens/${id}`), onSuccess: () => void qc.invalidateQueries({ queryKey: ['tokens'] }) });
   return (
     <div className="panel">
       <div className="panel-head"><h2>API tokens</h2><span className="small muted">For the MCP server, Mocky, Muse, CI scripts…</span></div>
       <div className="panel-body">
         <div className="row">
-          <input className="input grow" placeholder="Token name, e.g. Claude Code" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className="input grow" placeholder={scope === 'catalog' ? 'Token name, e.g. Mocky' : 'Token name, e.g. Claude Code'} value={name} onChange={(e) => setName(e.target.value)} />
+          <Segmented value={scope} onChange={setScope} options={[{ value: 'full', label: 'Full access' }, { value: 'catalog', label: 'Read-only catalog' }]} />
           <button className="btn primary" disabled={!name} onClick={() => create.mutate()}>Create token</button>
         </div>
+        <span className="small muted">
+          {scope === 'full'
+            ? 'Acts as you: generates, edits and spends your budget. For Claude Code, scripts, CI.'
+            : 'Reads only the assets of the projects you share ("Share with apps" on a project). Give this one to Mocky.'}
+        </span>
         {created && (
           <div className="notice warn" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <strong>Copy this token now — it won’t be shown again.</strong>
@@ -146,11 +153,11 @@ function ApiTokens() {
           </div>
         )}
         <table className="table">
-          <thead><tr><th>Name</th><th>Prefix</th><th>Created</th><th>Last used</th><th /></tr></thead>
+          <thead><tr><th>Name</th><th>Access</th><th>Prefix</th><th>Created</th><th>Last used</th><th /></tr></thead>
           <tbody>
-            {tokens.data?.items.length === 0 && <tr><td colSpan={5} className="muted">No token.</td></tr>}
+            {tokens.data?.items.length === 0 && <tr><td colSpan={6} className="muted">No token.</td></tr>}
             {tokens.data?.items.map((t) => (
-              <tr key={t.id}><td>{t.name}</td><td className="mono">{t.prefix}…</td><td>{timeAgo(t.createdAt)}</td><td>{t.lastUsedAt ? timeAgo(t.lastUsedAt) : 'never'}</td>
+              <tr key={t.id}><td>{t.name}</td><td>{t.scope === 'catalog' ? <span className="chip cyan">read-only catalog</span> : <span className="chip">full</span>}</td><td className="mono">{t.prefix}…</td><td>{timeAgo(t.createdAt)}</td><td>{t.lastUsedAt ? timeAgo(t.lastUsedAt) : 'never'}</td>
                 <td><button className="btn ghost sm danger" onClick={() => confirm(`Revoke "${t.name}"?`) && revoke.mutate(t.id)}>Revoke</button></td></tr>
             ))}
           </tbody>
